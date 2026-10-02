@@ -956,6 +956,9 @@ $('#t-history').addEventListener('click', ev => {
   if (id) onDelete(id);
 });
 
+// Makes the app installable (Add to Home Screen / Install app).
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+
 resetForm();
 applyLock();
 renderAll();
