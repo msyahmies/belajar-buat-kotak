@@ -72,11 +72,10 @@ function entryTotals(e) {
 }
 
 function summarize(list) {
-  const out = { sales: 0, pcs: 0, ws: 0, leads: 0, converted: 0, deposit: 0, byCategory: {}, byPrinting: {}, bySource: {} };
+  const out = { sales: 0, pcs: 0, leads: 0, converted: 0, deposit: 0, byCategory: {}, byPrinting: {}, bySource: {} };
   CATEGORIES.forEach(c => out.byCategory[c] = { pcs: 0, sales: 0 });
   PRINTINGS.forEach(p => out.byPrinting[p] = { pcs: 0, sales: 0 });
   for (const e of list) {
-    out.ws += Number(e.ws) || 0;
     out.leads += Number(e.leads) || 0;
     out.converted += Number(e.converted) || 0;
     for (const l of e.lines) {
@@ -109,7 +108,6 @@ function renderDashboard() {
 
   const day = summarize(entries.filter(e => e.date === date));
   $('#d-pcs').textContent = day.pcs;
-  $('#d-ws').textContent = day.ws;
   $('#d-leads').textContent = day.leads;
   $('#d-conv').textContent = day.converted;
   $('#d-rate').textContent = convRate(day);
@@ -197,6 +195,11 @@ function readLines() {
   }));
 }
 
+function updateConvRate() {
+  const f = $('#entry-form');
+  f.convRate.value = convRate({ leads: Number(f.leads.value) || 0, converted: Number(f.converted.value) || 0 });
+}
+
 function updateFormTotal() {
   const t = entryTotals({ lines: readLines() });
   $('#f-pcs').textContent = t.pcs;
@@ -216,6 +219,7 @@ function resetForm(keep) {
   $('#lines').innerHTML = '';
   addLine();
   updateFormTotal();
+  updateConvRate();
 }
 
 async function onSubmitEntry(ev) {
@@ -225,7 +229,6 @@ async function onSubmitEntry(ev) {
   const entry = {
     id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2),
     date: f.date.value,
-    ws: Number(f.ws.value) || 0,
     leads: Number(f.leads.value) || 0,
     converted: Number(f.converted.value) || 0,
     lines: readLines(),
@@ -282,7 +285,7 @@ function renderHistory() {
     const t = entryTotals(e);
     const detail = e.lines.map(lineDetail).join('<hr>');
     return `<tr>
-      <td>${e.date}</td><td class="num">${e.ws}</td><td class="num">${e.leads || 0}</td><td class="num">${e.converted || 0}</td>
+      <td>${e.date}</td><td class="num">${e.leads || 0}</td><td class="num">${e.converted || 0}</td><td class="num">${convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 })}</td>
       <td class="num">${t.pcs}</td><td class="num">${rm(t.sales)}</td>
       <td class="muted">${detail}</td>
       <td><button class="danger" data-del="${esc(e.id)}">Padam</button></td>
@@ -304,11 +307,11 @@ async function onDelete(id) {
 }
 
 function exportCsv() {
-  const header = ['Tarikh', 'WS Masuk', 'Lead Masuk', 'Lead Convert', 'Nama Customer', 'No Telefon', 'Kategori', 'Printing', 'Kuantiti', 'Total (RM)', 'Deposit (RM)', 'Baki (RM)', 'Lead Source', 'Expected Delivery', 'Notes'];
+  const header = ['Tarikh', 'Lead Masuk', 'Lead Convert', '% Lead Convert', 'Nama Customer', 'No Telefon', 'Kategori', 'Printing', 'Kuantiti', 'Total (RM)', 'Deposit (RM)', 'Baki (RM)', 'Lead Source', 'Expected Delivery', 'Notes'];
   const rows = [header];
   // No telefon ditulis sebagai ="012..." supaya Excel tidak buang 0 di depan.
   for (const e of monthEntries().reverse()) {
-    e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.ws : 0, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, l.deposit || 0, (Number(l.amount) || 0) - (Number(l.deposit) || 0), l.source || '', l.delivery || '', l.notes || '']));
+    e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, i === 0 ? convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 }) : '', l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, l.deposit || 0, (Number(l.amount) || 0) - (Number(l.deposit) || 0), l.source || '', l.delivery || '', l.notes || '']));
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const a = document.createElement('a');
@@ -362,6 +365,8 @@ $('#hist-month').value = todayStr().slice(0, 7);
 $('#hist-month').addEventListener('change', renderHistory);
 $('#add-line').addEventListener('click', () => { addLine(); updateFormTotal(); });
 $('#lines').addEventListener('input', updateFormTotal);
+$('#entry-form').leads.addEventListener('input', updateConvRate);
+$('#entry-form').converted.addEventListener('input', updateConvRate);
 $('#entry-form').addEventListener('submit', onSubmitEntry);
 $('#settings-form').addEventListener('submit', onSubmitSettings);
 $('#export-csv').addEventListener('click', exportCsv);

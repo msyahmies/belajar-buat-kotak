@@ -40,7 +40,6 @@
       <h2>Hari Ini</h2>
       <div class="cards">
         <div class="card"><span>Baju Terjual</span><strong id="d-pcs">0</strong></div>
-        <div class="card"><span>WS Masuk</span><strong id="d-ws">0</strong></div>
         <div class="card"><span>Lead Masuk</span><strong id="d-leads">0</strong></div>
         <div class="card"><span>Lead Convert</span><strong id="d-conv">0</strong></div>
         <div class="card"><span>Kadar Convert</span><strong id="d-rate">-</strong></div>
@@ -85,9 +84,9 @@
       <form id="entry-form">
         <div class="grid">
           <label>Tarikh <input type="date" name="date" required></label>
-          <label>WS Masuk (bilangan) <input type="number" name="ws" min="0" value="0" required></label>
           <label>Total Lead Masuk <input type="number" name="leads" min="0" value="0" required></label>
           <label>Lead Convert <input type="number" name="converted" min="0" value="0" required></label>
+          <label>% Lead Convert <input type="text" name="convRate" readonly tabindex="-1" value="-"></label>
         </div>
 
         <h2>Jualan</h2>
@@ -134,7 +133,7 @@
       </div>
       <div class="table-wrap">
         <table id="t-history">
-          <thead><tr><th>Tarikh</th><th class="num">WS</th><th class="num">Lead</th><th class="num">Convert</th><th class="num">Pcs</th><th class="num">Sales</th><th>Butiran</th><th></th></tr></thead>
+          <thead><tr><th>Tarikh</th><th class="num">Lead</th><th class="num">Convert</th><th class="num">% Convert</th><th class="num">Pcs</th><th class="num">Sales</th><th>Butiran</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
