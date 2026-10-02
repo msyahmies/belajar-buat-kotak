@@ -14,8 +14,9 @@
       <button data-tab="input">Key In</button>
       <button data-tab="jobs">Jobs</button>
       <button data-tab="history">History</button>
-      <button data-tab="settings">Settings</button>
       <button data-tab="expenses">Expenses</button>
+      <button data-tab="overhead">Overhead</button>
+      <button data-tab="settings">Settings</button>
     </nav>
   </header>
 
@@ -224,6 +225,71 @@
           <tbody></tbody>
         </table>
       </div>
+    </section>
+
+    <!-- OVERHEAD / BREAK-EVEN -->
+    <section id="tab-overhead" class="tab">
+      <div class="row">
+        <label>Date <input type="date" id="oh-date"></label>
+        <span id="oh-status" class="muted"></span>
+      </div>
+
+      <div class="card hero" id="oh-net-card">
+        <span id="oh-net-label">Net Profit This Month</span>
+        <strong id="oh-net">RM 0.00</strong>
+        <small id="oh-net-sub"></small>
+      </div>
+
+      <div class="cards key">
+        <div class="card c-yellow"><span>Monthly Overhead</span><strong id="oh-total">RM 0.00</strong><small id="oh-total-sub"></small></div>
+        <div class="card"><span>Break-even Sales</span><strong id="oh-breakeven">-</strong><small id="oh-breakeven-sub"></small></div>
+        <div class="card" id="oh-needed-card"><span>Sales Still Needed to Cover Overhead</span><strong id="oh-needed">-</strong><small id="oh-needed-sub"></small></div>
+      </div>
+
+      <h2>How It Is Worked Out (this month)</h2>
+      <table id="t-pnl">
+        <tbody>
+          <tr><td>Sales</td><td class="num" id="pnl-sales"></td></tr>
+          <tr><td>− Operation costs (shirts, DTF, plastic, postage…)</td><td class="num" id="pnl-cost"></td></tr>
+          <tr><td><b>= Gross profit</b> <span class="muted" id="pnl-margin"></span></td><td class="num" id="pnl-gross"></td></tr>
+          <tr><td>− Monthly overhead</td><td class="num" id="pnl-overhead"></td></tr>
+          <tr><td><b>= Net profit / loss</b></td><td class="num" id="pnl-net"></td></tr>
+        </tbody>
+      </table>
+      <p class="muted" id="oh-note"></p>
+
+      <h2>Fixed Monthly Overhead</h2>
+      <form id="overhead-form" class="panel">
+        <p class="muted">Costs you pay every month no matter how much you sell.</p>
+        <div class="oh-fields">
+          <label class="oh-field">Shop rent <input type="number" name="rent" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+          <label class="oh-field">Staff salary (all staff) <input type="number" name="salary" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+          <p class="muted oh-hint">EPF (KWSP) 13% + SOCSO/EIS ~1.25% is added automatically.</p>
+          <label class="oh-field">Electricity bill <input type="number" name="electric" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+          <label class="oh-field">Shop expenses <input type="number" name="shop" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+          <label class="oh-field">Advertising cost <input type="number" name="ads" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+          <label class="oh-field">Your own salary <input type="number" name="owner" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+        </div>
+
+        <h3>Other monthly costs</h3>
+        <div id="oh-items"></div>
+        <button type="button" id="oh-add" class="secondary">+ Add Other Cost</button>
+
+        <table id="t-overhead"><tbody></tbody></table>
+
+        <label class="oh-field" style="margin-top:16px">Estimated profit margin (%) <input type="number" name="margin" min="1" max="100" step="1" placeholder="e.g. 50"></label>
+        <p class="muted">Used for break-even sales until this month has both sales and operation costs recorded; then the real margin is used.</p>
+        <button type="submit">Save Overhead</button>
+        <p id="overhead-msg" class="msg"></p>
+      </form>
+
+      <template id="oh-item-tpl">
+        <div class="oh-item">
+          <input type="text" name="name" placeholder="e.g. Loan instalment">
+          <input type="number" name="amount" min="0" step="0.01" inputmode="decimal" placeholder="RM / month">
+          <button type="button" class="remove" title="Remove">✕</button>
+        </div>
+      </template>
     </section>
   </main>
 

@@ -47,6 +47,17 @@ const LS_ENTRIES = 'sales.entries';
 const LS_SETTINGS = 'sales.settings';
 const LS_EXPENSES = 'sales.expenses';
 const LS_JOBS = 'sales.jobs';
+const LS_OVERHEAD = 'sales.overhead';
+const OVERHEAD_FIELDS = [
+  { key: 'rent', label: 'Shop rent' },
+  { key: 'salary', label: 'Staff salary' },
+  { key: 'statutory', label: 'EPF (KWSP) + SOCSO/EIS' },
+  { key: 'electric', label: 'Electricity' },
+  { key: 'shop', label: 'Shop expenses' },
+  { key: 'ads', label: 'Advertising' },
+  { key: 'owner', label: 'Your own salary' },
+];
+const STATUTORY_RATE = 0.13 + 0.0125; // employer EPF 13% + SOCSO/EIS ~1.25%
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -71,6 +82,14 @@ let entries = normalizeEntries(load(LS_ENTRIES, []));
 let settings = load(LS_SETTINGS, { target: 0, syncUrl: '' });
 let expenses = normalizeExpenses(load(LS_EXPENSES, []));
 let jobs = load(LS_JOBS, {});
+let overhead = load(LS_OVERHEAD, { items: [], margin: 0 });
+
+// Each overhead line with its amount, statutory contributions worked out from staff salary.
+function overheadLines(o = overhead) {
+  const v = k => Number(o[k]) || 0;
+  const lines = OVERHEAD_FIELDS.map(f => ({ label: f.label, amount: f.key === 'statutory' ? Math.round(v('salary') * STATUTORY_RATE * 100) / 100 : v(f.key) }));
+  return lines.concat((o.items || []).filter(i => i.name).map(i => ({ label: i.name, amount: Number(i.amount) || 0 })));
+}
 
 // ---------- Sync (Google Apps Script) ----------
 
@@ -106,6 +125,7 @@ async function pull() {
     expenses = normalizeExpenses(data.expenses || []);
     save(LS_EXPENSES, expenses);
     if (data.jobs) { jobs = data.jobs; save(LS_JOBS, jobs); }
+    if (data.overhead && typeof data.overhead === 'object') { overhead = { items: [], ...data.overhead }; save(LS_OVERHEAD, overhead); }
     if (data.target != null) settings.target = Number(data.target) || 0;
     save(LS_ENTRIES, entries);
     save(LS_SETTINGS, settings);
@@ -617,6 +637,106 @@ async function saveJob(key, changes) {
   }
 }
 
+// ---------- Overhead / Break-even ----------
+
+function renderOverhead() {
+  const date = $('#oh-date').value || todayStr();
+  const month = date.slice(0, 7);
+  const [y, m, d] = date.split('-').map(Number);
+  const daysLeft = new Date(y, m, 0).getDate() - d + 1;
+  const monthName = new Date(y, m - 1, 1).toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
+
+  const lines = overheadLines();
+  const total = sumAmount(lines);
+  const sales = summarize(entries.filter(e => e.date.startsWith(month))).sales;
+  const monExp = expenses.filter(x => x.date.startsWith(month));
+  const opCost = sumAmount(monExp.filter(x => x.kind !== 'bulanan'));
+  const recordedOverhead = sumAmount(monExp.filter(x => x.kind === 'bulanan'));
+  const gross = sales - opCost;
+  const net = gross - total;
+
+  // Margin: real one once there are sales and operation costs this month, otherwise the estimate.
+  const realMargin = sales > 0 && opCost > 0 ? gross / sales : null;
+  const margin = realMargin ?? (Number(overhead.margin) || 0) / 100;
+  const breakEven = margin > 0 ? total / margin : null;
+  const needed = breakEven == null ? null : Math.max(breakEven - sales, 0);
+
+  $('#oh-net-label').textContent = `${net >= 0 ? 'Net Profit' : 'Net Loss'} for ${monthName}`;
+  $('#oh-net').textContent = rm(Math.abs(net));
+  $('#oh-net-sub').textContent = `Sales ${rm(sales)} − operation costs ${rm(opCost)} − overhead ${rm(total)}`;
+  setProfitCard($('#oh-net-card'), net);
+
+  $('#oh-total').textContent = rm(total);
+  $('#oh-total-sub').textContent = total ? `${rm(total / new Date(y, m, 0).getDate())} per day` : 'Fill in your overhead below';
+  $('#oh-breakeven').textContent = breakEven == null ? '-' : rm(breakEven);
+  $('#oh-breakeven-sub').textContent = breakEven == null
+    ? (margin < 0 ? 'Operation costs are higher than sales' : 'Set an estimated margin below')
+    : `Sales needed this month at ${(margin * 100).toFixed(1)}% margin${realMargin == null ? ' (estimate)' : ''}`;
+
+  const card = $('#oh-needed-card');
+  card.classList.toggle('c-green', needed === 0 && total > 0);
+  card.classList.toggle('c-red', needed > 0);
+  $('#oh-needed').textContent = !total || needed == null ? '-' : needed ? rm(needed) : 'Overhead covered!';
+  $('#oh-needed-sub').textContent = needed > 0 && daysLeft > 0
+    ? `${rm(needed / daysLeft)} per day for ${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : '';
+
+  $('#pnl-sales').textContent = rm(sales);
+  $('#pnl-cost').textContent = '− ' + rm(opCost);
+  $('#pnl-gross').textContent = rm(gross);
+  $('#pnl-margin').textContent = sales ? `(${(gross / sales * 100).toFixed(1)}% margin)` : '';
+  $('#pnl-overhead').textContent = '− ' + rm(total);
+  $('#pnl-net').innerHTML = `<b>${net < 0 ? '−' : ''}${rm(Math.abs(net))}</b>`;
+  $('#pnl-net').style.color = net < 0 ? 'var(--red)' : 'var(--green)';
+  $('#t-overhead tbody').innerHTML = lines.filter(l => l.amount).map(l =>
+    `<tr><td>${esc(l.label)}</td><td class="num">${rm(l.amount)}</td></tr>`).join('')
+    + `<tr class="total"><td>Total overhead per month</td><td class="num">${rm(total)}</td></tr>`;
+  $('#oh-note').textContent = recordedOverhead
+    ? `Note: ${rm(recordedOverhead)} of Monthly-type costs is also recorded in Expenses this month. To avoid counting rent or salary twice, keep fixed costs here and record only operation costs in Expenses.`
+    : '';
+}
+
+function addOverheadItem(item = {}) {
+  const node = $('#oh-item-tpl').content.firstElementChild.cloneNode(true);
+  $('[name=name]', node).value = item.name || '';
+  $('[name=amount]', node).value = item.amount || '';
+  $('.remove', node).addEventListener('click', () => node.remove());
+  $('#oh-items').appendChild(node);
+}
+
+function fillOverheadForm() {
+  const f = $('#overhead-form');
+  OVERHEAD_FIELDS.forEach(({ key }) => { if (f[key]) f[key].value = overhead[key] || ''; });
+  $('#oh-items').innerHTML = '';
+  (overhead.items || []).forEach(addOverheadItem);
+  f.margin.value = overhead.margin || '';
+}
+
+function readOverheadForm() {
+  const f = $('#overhead-form');
+  const o = { margin: Number(f.margin.value) || 0 };
+  OVERHEAD_FIELDS.forEach(({ key }) => { if (f[key]) o[key] = Number(f[key].value) || 0; });
+  o.items = $$('#oh-items .oh-item')
+    .map(n => ({ name: $('[name=name]', n).value.trim(), amount: Number($('[name=amount]', n).value) || 0 }))
+    .filter(i => i.name);
+  return o;
+}
+
+async function onSubmitOverhead(ev) {
+  ev.preventDefault();
+  const msg = $('#overhead-msg');
+  overhead = readOverheadForm();
+  save(LS_OVERHEAD, overhead);
+  renderOverhead();
+  try {
+    if (settings.syncUrl) await remote({ action: 'setOverhead', overhead });
+    msg.className = 'msg ok';
+    msg.textContent = `Saved: ${rm(sumAmount(overheadLines()))} overhead per month.`;
+  } catch (e) {
+    msg.className = 'msg err';
+    msg.textContent = 'Saved on this device only. To share it, update Code.gs in Google Sheet to the latest version. (' + e.message + ')';
+  }
+}
+
 // ---------- Settings ----------
 
 async function onSubmitSettings(ev) {
@@ -645,6 +765,8 @@ function renderAll() {
   renderHistory();
   renderExpenses();
   renderJobs();
+  renderOverhead();
+  if (!$('#tab-overhead').classList.contains('active')) fillOverheadForm();
   const f = $('#settings-form');
   f.target.value = settings.target || '';
   f.syncUrl.value = settings.syncUrl || '';
@@ -653,7 +775,7 @@ function renderAll() {
 function showTab(name) {
   $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $$('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
-  if (['dashboard', 'expenses', 'jobs'].includes(name) && settings.syncUrl) pull();
+  if (['dashboard', 'expenses', 'jobs', 'overhead'].includes(name) && settings.syncUrl) pull();
 }
 
 $$('nav button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -668,6 +790,13 @@ $('#entry-form').converted.addEventListener('input', updateConvRate);
 $('#entry-form').addEventListener('submit', onSubmitEntry);
 $('#settings-form').addEventListener('submit', onSubmitSettings);
 $('#export-csv').addEventListener('click', exportCsv);
+$('#oh-date').value = todayStr();
+$('#oh-date').addEventListener('change', renderOverhead);
+$('#oh-add').addEventListener('click', () => addOverheadItem());
+// Recalculate as the owner types; Save shares it to Google Sheet.
+$('#overhead-form').addEventListener('input', () => { overhead = readOverheadForm(); save(LS_OVERHEAD, overhead); renderOverhead(); });
+$('#oh-items').addEventListener('click', ev => { if (ev.target.closest('.remove')) setTimeout(() => { overhead = readOverheadForm(); save(LS_OVERHEAD, overhead); renderOverhead(); }); });
+$('#overhead-form').addEventListener('submit', onSubmitOverhead);
 $('#exp-date').value = todayStr();
 $('#exp-date').addEventListener('change', renderExpenses);
 $('#expense-form').date.value = todayStr();

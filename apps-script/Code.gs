@@ -35,12 +35,13 @@ function doPost(e) {
     if (ss.getSpreadsheetTimeZone() !== TIME_ZONE) ss.setSpreadsheetTimeZone(TIME_ZONE);
     const req = JSON.parse(e.postData.contents);
     switch (req.action) {
-      case 'list': return json({ ok: true, entries: listEntries(), expenses: listExpenses(), jobs: listJobs(), target: getTarget() });
+      case 'list': return json({ ok: true, entries: listEntries(), expenses: listExpenses(), jobs: listJobs(), overhead: getOverhead(), target: getTarget() });
       case 'add': addEntry(req.entry); return json({ ok: true });
       case 'delete': deleteEntry(req.id); return json({ ok: true });
       case 'addExpense': addExpense(req.expense); return json({ ok: true });
       case 'deleteExpense': deleteRowById(SHEET_EXPENSES, req.id); return json({ ok: true });
       case 'saveJob': saveJob(req.job); return json({ ok: true });
+      case 'setOverhead': setOverhead(req.overhead); return json({ ok: true });
       case 'setTarget': setTarget(req.target); return json({ ok: true });
       default: return json({ ok: false, error: 'Invalid action' });
     }
@@ -175,4 +176,13 @@ function getTarget() {
 
 function setTarget(target) {
   sheet(SHEET_SETTINGS).getRange('B1').setValue(Number(target) || 0);
+}
+
+// Monthly overhead (rent, salary, bills, other items, estimated margin) lives in Settings!B2 as JSON.
+function getOverhead() {
+  try { return JSON.parse(sheet(SHEET_SETTINGS).getRange('B2').getValue() || 'null'); } catch (err) { return null; }
+}
+
+function setOverhead(overhead) {
+  sheet(SHEET_SETTINGS).getRange('A2:B2').setValues([['Monthly Overhead (JSON)', JSON.stringify(overhead || {})]]);
 }

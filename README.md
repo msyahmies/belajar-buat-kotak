@@ -55,6 +55,15 @@ After staff save a key in, the app opens the **Jobs** tab.
 - **Monthly profit/loss** = month's sales − all month's expenses (green = profit, red = loss)
 - **Daily profit/loss** = day's sales − that day's daily expenses − (monthly overhead ÷ days in month)
 
+## Overhead & Break-even (Overhead tab)
+
+- Fill in your fixed monthly costs once: shop rent, staff salary, electricity, shop expenses, advertising, your own salary, plus any other costs. They apply to every month
+- EPF (KWSP) 13% + SOCSO/EIS ~1.25% is added on top of staff salary automatically
+- **Net profit/loss** = month's sales − operation costs (Daily expenses) − monthly overhead
+- **Break-even sales** = monthly overhead ÷ profit margin. The margin is worked out from this month's sales and operation costs; before both exist, the estimated margin you enter is used
+- **Sales still needed to cover overhead** = break-even sales − sales so far, and how much that is per day for the rest of the month
+- Keep rent, salary and bills here instead of in Expenses, so they are not counted twice
+
 ## How to use
 
 ### Option 1: One device only (easiest)

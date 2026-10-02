@@ -95,7 +95,7 @@ h2 { font-size: 1rem; margin: 24px 0 8px; }
 
 table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
 th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 th { background: var(--navy); color: #fff; font-weight: 600; }
 tbody tr:last-child td { border-bottom: none; }
 #t-history hr { border: none; border-top: 1px dashed var(--border); margin: 6px 0; }
@@ -160,6 +160,20 @@ button.danger { background: none; border-color: var(--danger); color: var(--dang
 .msg.err { color: var(--danger); }
 
 #settings-form { max-width: 520px; }
+
+#overhead-form { max-width: 620px; }
+.oh-fields { display: flex; flex-direction: column; }
+.oh-field { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.95rem; margin-bottom: 10px; }
+.oh-field input { width: 160px; text-align: right; font-weight: 700; font-size: 1.05rem; }
+.oh-hint { margin: -6px 0 12px; }
+#overhead-form h3 { font-size: 0.95rem; margin: 12px 0 8px; }
+#t-overhead { margin-top: 16px; }
+#t-overhead tr.total td { font-weight: 700; font-size: 1rem; border-top: 2px solid var(--navy); }
+.oh-item { display: grid; grid-template-columns: 1fr 160px auto; gap: 8px; margin-bottom: 8px; }
+@media (max-width: 640px) { .oh-field input { width: 130px; } .oh-item { grid-template-columns: 1fr 110px auto; } }
+.oh-item .remove { background: none; color: var(--danger); border-color: var(--border); padding: 6px 12px; }
+#t-pnl td:first-child { width: 70%; }
+#t-pnl tr:last-child td { font-size: 1rem; }
 
 #job-summary { margin-bottom: 10px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
