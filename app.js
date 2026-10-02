@@ -3,7 +3,9 @@
 
 const CATEGORIES = ['Work Shirt', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
 const PRINTINGS = ['DTF', 'Sublimation'];
-const EXPENSE_CATEGORIES = ['Shop Rent', 'Staff Salary', 'Electricity & Water', 'Internet & Phone', 'Blank Shirts / Materials', 'Ink & Film', 'Advertising / Ads', 'Delivery / Postage', 'Machine Maintenance', 'Others'];
+// Operation costs are bought as needed (daily); overheads are fixed monthly costs.
+const OPERATION_COSTS = ['Blank Shirts', 'DTF Sticker / Film', 'Sublimation Paper & Ink', 'Ink', 'Plastic / Packaging', 'Delivery / Postage', 'Advertising / Ads', 'Machine Maintenance', 'Other Operation Cost'];
+const OVERHEAD_COSTS = ['Shop Rent', 'Staff Salary', 'Electricity & Water', 'Internet & Phone', 'Other Overhead'];
 const SOURCES = ['WhatsApp', 'Facebook', 'Instagram', 'TikTok', 'Walk-in', 'Referral', 'Returning Customer', 'Others'];
 
 // Names used by the earlier Malay version, so records saved before still group correctly.
@@ -11,7 +13,7 @@ const LEGACY_NAMES = {
   'Baju Pekerja': 'Work Shirt', 'Baju Family Day': 'Family Day Shirt', 'Baju Sukan': 'Sports Shirt', 'Baju Birthday': 'Birthday Shirt',
   'Customer Lama': 'Returning Customer', 'Lain-lain': 'Others',
   'Sewa Kedai': 'Shop Rent', 'Gaji Staff': 'Staff Salary', 'Bil Elektrik & Air': 'Electricity & Water', 'Internet & Telefon': 'Internet & Phone',
-  'Baju Kosong / Bahan': 'Blank Shirts / Materials', 'Iklan / Ads': 'Advertising / Ads', 'Penghantaran / Pos': 'Delivery / Postage',
+  'Baju Kosong / Bahan': 'Blank Shirts', 'Blank Shirts / Materials': 'Blank Shirts', 'Ink & Film': 'DTF Sticker / Film', 'Iklan / Ads': 'Advertising / Ads', 'Penghantaran / Pos': 'Delivery / Postage',
   'Penyelenggaraan Mesin': 'Machine Maintenance',
 };
 const rename = v => LEGACY_NAMES[v] ?? v;
@@ -502,7 +504,12 @@ $('#export-csv').addEventListener('click', exportCsv);
 $('#exp-date').value = todayStr();
 $('#exp-date').addEventListener('change', renderExpenses);
 $('#expense-form').date.value = todayStr();
-$('#expense-form').category.innerHTML = EXPENSE_CATEGORIES.map(c => `<option>${c}</option>`).join('');
+$('#expense-form').category.innerHTML =
+  `<optgroup label="Operation cost">${OPERATION_COSTS.map(c => `<option>${c}</option>`).join('')}</optgroup>`
+  + `<optgroup label="Overhead (monthly)">${OVERHEAD_COSTS.map(c => `<option>${c}</option>`).join('')}</optgroup>`;
+$('#expense-form').category.addEventListener('change', ev => {
+  ev.target.form.kind.value = OVERHEAD_COSTS.includes(ev.target.value) ? 'bulanan' : 'harian';
+});
 $('#expense-form').addEventListener('submit', onSubmitExpense);
 $('#t-expenses').addEventListener('click', ev => {
   const id = ev.target.dataset?.delExp;

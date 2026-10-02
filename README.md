@@ -30,9 +30,10 @@ Each time staff key in:
 
 ## Expenses & Profit/Loss (Expenses tab)
 
-- Enter every expense: date, type, category (rent, salary, bills, materials, ink, ads, etc.), amount and notes
-- **Daily** type: a cost for that day only (e.g. materials, postage)
-- **Monthly / overhead** type: fixed monthly costs (e.g. rent, salary, bills). For daily profit, these are spread evenly over every day of the month
+- Enter every expense: date, category, type, amount and notes
+- **Operation costs** (Daily type): blank shirts, DTF sticker / film, sublimation paper & ink, ink, plastic / packaging, postage, ads, machine maintenance
+- **Overheads** (Monthly type): shop rent, staff salary, electricity & water, internet & phone. The type is picked automatically from the category
+- For daily profit, monthly overheads are spread evenly over every day of the month
 - **Monthly profit/loss** = month's sales − all month's expenses (green = profit, red = loss)
 - **Daily profit/loss** = day's sales − that day's daily expenses − (monthly overhead ÷ days in month)
 
@@ -63,5 +64,5 @@ The easiest way is **GitHub Pages**: Settings > Pages > choose the branch, then 
 with staff. They can use "Add to Home Screen" so it looks like an app.
 
 ## Changing categories / printing types / lead sources
-Edit the `CATEGORIES`, `PRINTINGS`, `SOURCES` and `EXPENSE_CATEGORIES` lists at the top of `app.js`.
+Edit the `CATEGORIES`, `PRINTINGS`, `SOURCES`, `OPERATION_COSTS` and `OVERHEAD_COSTS` lists at the top of `app.js`.
 `CATEGORIES` and `PRINTINGS` are also in `apps-script/Code.gs` (redeploy after editing if you use Google Sheet).

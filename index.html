@@ -171,21 +171,21 @@
         <div class="card" id="p-day-card"><span id="p-day-label">Profit / Loss Today</span><strong id="p-day">RM 0.00</strong><small id="p-day-sub"></small></div>
       </div>
 
-      <h2>Add Expense</h2>
+      <h2>Add Expense / Operation Cost</h2>
       <form id="expense-form" class="panel">
         <div class="grid">
           <label>Date <input type="date" name="date" required></label>
+          <label>Category <select name="category" required></select></label>
           <label>Type
             <select name="kind">
-              <option value="harian">Daily (materials, postage)</option>
+              <option value="harian">Daily (shirts, DTF sticker, plastic)</option>
               <option value="bulanan">Monthly (rent, salary, bills)</option>
             </select>
           </label>
-          <label>Category <select name="category" required></select></label>
           <label>Amount (RM) <input type="number" name="amount" min="0.01" step="0.01" required></label>
         </div>
-        <label>Notes <input type="text" name="notes" placeholder="e.g. October rent"></label>
-        <p class="muted"><b>Monthly</b> costs are spread evenly over every day of the month when working out daily profit, so the day you pay rent doesn't show a big loss.</p>
+        <label>Notes <input type="text" name="notes" placeholder="e.g. 50 pcs blank shirts size M, 2 rolls DTF sticker"></label>
+        <p class="muted">Type is picked automatically from the category, but you can change it. <b>Monthly</b> costs are spread evenly over every day of the month when working out daily profit, so the day you pay rent doesn't show a big loss.</p>
         <button type="submit">Save Expense</button>
         <p id="expense-msg" class="msg"></p>
       </form>
