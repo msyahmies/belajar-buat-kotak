@@ -462,9 +462,10 @@ function renderExpenses() {
     ? list.map(x => `<tr>
         <td>${esc(x.date)}</td><td>${x.kind === 'bulanan' ? 'Monthly' : 'Daily'}</td><td>${esc(x.category)}</td>
         <td class="num">${rm(x.amount)}</td><td class="muted">${esc(x.notes || '')}</td>
+        <td>${/^https:\/\/(drive|docs)\.google\.com\//.test(x.receipt || '') ? `<a href="${esc(x.receipt)}" target="_blank" rel="noopener">View</a>` : ''}</td>
         <td><button class="danger" data-del-exp="${esc(x.id)}">Delete</button></td>
       </tr>`).join('')
-    : '<tr><td colspan="6" class="muted">No expenses for this month.</td></tr>';
+    : '<tr><td colspan="7" class="muted">No expenses for this month.</td></tr>';
 }
 
 async function onSubmitExpense(ev) {

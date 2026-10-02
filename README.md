@@ -72,6 +72,22 @@ After staff save a key in, the app opens the **Jobs** tab.
 - The PIN keeps staff out of owner pages in normal use. It is not strong security: someone who knows how to read the page code or has the Google Sheet link can still get to the data
 - Forgot the PIN? In the Google Sheet, open the **Settings** sheet, cell **B2**, delete the `"pinHash":"…"` part, then reload the app on your device
 
+## Expenses from Telegram (receipt photos)
+
+Send a receipt photo to your own Telegram bot and it is added to Expenses, with the photo saved in your Google Drive.
+
+**Setup (once):**
+1. In Telegram, open **@BotFather**, send `/newbot`, choose a name and a username ending in `bot`. Copy the **token** it gives you
+2. In Google Sheet → **Extensions → Apps Script**, paste the latest `Code.gs` and save
+3. Click ⚙️ **Project Settings** → **Script properties** → **Add script property**: name `TELEGRAM_TOKEN`, value = the token. Save
+4. Back in the editor (**<>**), choose **setupTelegram** in the function list at the top and press **Run**. Allow the permissions it asks for (Drive and external requests)
+5. **Deploy → Manage deployments → Edit → Version: New version → Deploy** (URL stays the same)
+6. Open your bot in Telegram and send `/start`. The first chat to do this becomes the owner; anyone else is ignored
+
+**Use:** send a photo with a caption like `DTF 150 supplier Ali`, `baju 400` or `plastik RM35.50`.
+The amount is the number in the caption (or after "RM"); the category is picked from words like dtf, baju, plastik, poslaju, ink, iklan, mesin. No amount? The bot asks and you reply with it. Text without a photo (`poslaju 12`) works too.
+New expenses show up in the app within about a minute, with a **View** link to the receipt.
+
 ## How to use
 
 ### Option 1: One device only (easiest)

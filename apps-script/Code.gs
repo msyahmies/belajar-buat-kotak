@@ -12,7 +12,7 @@ const SHEET_JOBS = 'Jobs';
 const JOB_FIELDS = ['design', 'order', 'shirt', 'print', 'heatpress', 'packing', 'method', 'ship'];
 const JOB_HEADER = ['Job ID', 'Customer', 'Phone', 'Category', 'Printing', 'Qty', 'Expected Delivery', 'Deposit (RM)',
   'Design', 'Shirt Order', 'Shirt Status', 'Print', 'Heat Press', 'Packing', 'Post / Pickup', 'Post / Pickup Status', 'Current Status', 'Updated At'];
-const EXPENSE_HEADER = ['ID', 'Date', 'Type', 'Category', 'Amount (RM)', 'Notes', 'Entered At'];
+const EXPENSE_HEADER = ['ID', 'Date', 'Type', 'Category', 'Amount (RM)', 'Notes', 'Entered At', 'Receipt'];
 const CATEGORIES = ['Work Shirt', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
 const PRINTINGS = ['DTF', 'Sublimation'];
 
@@ -127,6 +127,7 @@ function listExpenses() {
     amount: Number(r[4]) || 0,
     notes: String(r[5]),
     createdAt: String(r[6]),
+    receipt: String(r[7] || ''),
   }));
 }
 
@@ -185,4 +186,141 @@ function getOverhead() {
 
 function setOverhead(overhead) {
   sheet(SHEET_SETTINGS).getRange('A2:B2').setValues([['Monthly Overhead (JSON)', JSON.stringify(overhead || {})]]);
+}
+
+
+// ---------- Telegram: send a receipt photo to your bot, it lands in Expenses ----------
+//
+// One-time setup (see README):
+//   1. Create a bot with @BotFather in Telegram and copy its token.
+//   2. In Apps Script: Project Settings > Script properties > add TELEGRAM_TOKEN = <token>.
+//   3. Choose setupTelegram in the function list at the top and press Run, then allow access.
+//   4. Open your bot in Telegram and send /start. The first chat to do so becomes the owner.
+// After that, every minute the script picks up new messages from the bot.
+
+const TG_CATEGORY_WORDS = [
+  ['DTF Sticker / Film', ['dtf', 'sticker', 'film']],
+  ['Sublimation Paper & Ink', ['sublimation', 'sublim', 'kertas']],
+  ['Blank Shirts', ['baju', 'shirt', 'tshirt', 't-shirt', 'jersey', 'kain']],
+  ['Ink', ['ink', 'dakwat']],
+  ['Plastic / Packaging', ['plastik', 'plastic', 'packaging', 'kotak', 'box', 'bubble']],
+  ['Delivery / Postage', ['pos', 'poslaju', 'j&t', 'jnt', 'courier', 'kurier', 'ninja', 'lalamove', 'delivery', 'grab']],
+  ['Advertising / Ads', ['iklan', 'ads', 'boost', 'facebook', 'fb', 'tiktok', 'meta']],
+  ['Machine Maintenance', ['mesin', 'machine', 'repair', 'servis', 'service', 'baiki']],
+];
+const TG_HELP = 'Send a photo of the receipt with a caption, for example:\n' +
+  '• DTF 150 supplier Ali\n• baju 400\n• plastik RM35.50\n\n' +
+  'No photo? Just type it, e.g. "poslaju 12". If you forget the amount I will ask for it.';
+
+function tgToken() {
+  return PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+}
+
+function tg(method, payload) {
+  const res = UrlFetchApp.fetch('https://api.telegram.org/bot' + tgToken() + '/' + method, {
+    method: 'post', contentType: 'application/json', payload: JSON.stringify(payload || {}), muteHttpExceptions: true,
+  });
+  return JSON.parse(res.getContentText());
+}
+
+function tgSend(chatId, text) {
+  tg('sendMessage', { chat_id: chatId, text: text });
+}
+
+// Run once from the Apps Script editor.
+function setupTelegram() {
+  if (!tgToken()) throw new Error('Add TELEGRAM_TOKEN in Project Settings > Script properties first.');
+  const me = tg('getMe');
+  if (!me.ok) throw new Error('Telegram rejected the token: ' + me.description);
+  tg('deleteWebhook', {});
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'checkTelegram').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('checkTelegram').timeBased().everyMinutes(1).create();
+  receiptFolder();
+  Logger.log('Telegram is ready. Open @' + me.result.username + ' in Telegram and send /start');
+}
+
+// Runs every minute: fetch new bot messages and turn them into expenses.
+function checkTelegram() {
+  if (!tgToken()) return;
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return;
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const res = tg('getUpdates', { offset: Number(props.getProperty('TG_OFFSET')) || 0, timeout: 0, allowed_updates: ['message'] });
+    (res.result || []).forEach(u => {
+      props.setProperty('TG_OFFSET', String(u.update_id + 1)); // never handle the same message twice
+      if (!u.message) return;
+      try { handleTelegram(u.message); } catch (err) { tgSend(u.message.chat.id, 'Sorry, that did not save: ' + err); }
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function handleTelegram(msg) {
+  const props = PropertiesService.getScriptProperties();
+  const chatId = String(msg.chat.id);
+  const owner = props.getProperty('TG_OWNER');
+  const text = (msg.caption || msg.text || '').trim();
+
+  if (/^\/start/.test(text)) {
+    if (!owner) props.setProperty('TG_OWNER', chatId);
+    if (!owner || owner === chatId) tgSend(chatId, 'Hi! I save your receipts to Shop Sales Tracker > Expenses.\n\n' + TG_HELP);
+    else tgSend(chatId, 'This bot is private.');
+    return;
+  }
+  if (chatId !== owner) { tgSend(chatId, 'This bot is private.'); return; }
+
+  const date = Utilities.formatDate(new Date(msg.date * 1000), TIME_ZONE, 'yyyy-MM-dd');
+  const photo = msg.photo ? msg.photo[msg.photo.length - 1] : null;
+  const doc = msg.document && /^(image\/|application\/pdf)/.test(msg.document.mime_type || '') ? msg.document : null;
+  const pending = JSON.parse(props.getProperty('TG_PENDING') || 'null');
+
+  if (photo || doc) {
+    const receipt = saveReceipt((photo || doc).file_id, date, doc ? doc.file_name : 'receipt.jpg');
+    const parsed = parseExpense(text);
+    if (parsed.amount) { saveTelegramExpense(chatId, date, parsed, receipt); return; }
+    props.setProperty('TG_PENDING', JSON.stringify({ date: date, text: text, receipt: receipt }));
+    tgSend(chatId, 'Receipt saved. How much was it? Reply with the amount, e.g. 150 or "DTF 150".');
+    return;
+  }
+
+  const parsed = parseExpense(pending ? (pending.text + ' ' + text).trim() : text);
+  if (!parsed.amount) { tgSend(chatId, TG_HELP); return; }
+  props.deleteProperty('TG_PENDING');
+  saveTelegramExpense(chatId, pending ? pending.date : date, parsed, pending ? pending.receipt : '');
+}
+
+// "DTF 150 supplier Ali" -> { amount: 150, category: 'DTF Sticker / Film', notes: 'DTF 150 supplier Ali' }
+function parseExpense(text) {
+  const t = String(text || '');
+  const m = t.match(/rm\s*(\d+(?:[.,]\d{1,2})?)/i) || t.match(/(?:^|\s)(\d+(?:[.,]\d{1,2})?)(?=\s|$)/);
+  const amount = m ? Number(m[1].replace(',', '.')) : 0;
+  const lower = ' ' + t.toLowerCase() + ' ';
+  const hit = TG_CATEGORY_WORDS.find(([, words]) => words.some(w => lower.indexOf(w) !== -1));
+  return { amount: amount, category: hit ? hit[0] : 'Other Operation Cost', notes: t };
+}
+
+function saveTelegramExpense(chatId, date, parsed, receipt) {
+  const sh = sheet(SHEET_EXPENSES);
+  if (!sh.getRange(1, 8).getValue()) sh.getRange(1, 8).setValue('Receipt');
+  appendWithTextDate(sh, [Utilities.getUuid(), date, 'Daily', parsed.category, parsed.amount, parsed.notes + ' (Telegram)', new Date().toISOString(), receipt || '']);
+  tgSend(chatId, '✅ Saved to Expenses\n' + parsed.category + ': RM' + parsed.amount.toFixed(2) + ' on ' + date +
+    (receipt ? '\nReceipt saved in Google Drive.' : '') + '\n\nWrong category or amount? Delete it in the app (Expenses tab) and send again.');
+}
+
+function receiptFolder() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('TG_FOLDER');
+  if (id) { try { return DriveApp.getFolderById(id); } catch (err) { /* folder deleted: make a new one */ } }
+  const folder = DriveApp.createFolder('Shop Sales Tracker Receipts');
+  props.setProperty('TG_FOLDER', folder.getId());
+  return folder;
+}
+
+function saveReceipt(fileId, date, name) {
+  const file = tg('getFile', { file_id: fileId });
+  if (!file.ok) throw new Error('could not download the photo from Telegram');
+  const blob = UrlFetchApp.fetch('https://api.telegram.org/file/bot' + tgToken() + '/' + file.result.file_path).getBlob();
+  return receiptFolder().createFile(blob.setName(date + ' ' + name)).getUrl();
 }
