@@ -82,7 +82,13 @@ let entries = normalizeEntries(load(LS_ENTRIES, []));
 let settings = load(LS_SETTINGS, { target: 0, syncUrl: '' });
 let expenses = normalizeExpenses(load(LS_EXPENSES, []));
 let jobs = load(LS_JOBS, {});
-let overhead = load(LS_OVERHEAD, { items: [], margin: 0 });
+// Starting overhead for this shop; replaced as soon as the owner saves their own figures.
+const DEFAULT_OVERHEAD = {
+  rent: 650, salary: 3400, electric: 400, shop: 300, ads: 0, owner: 2500,
+  items: [{ name: 'TEKUN loan', amount: 500 }], margin: 0,
+};
+let overhead = load(LS_OVERHEAD, null);
+if (!overhead || !('rent' in overhead)) overhead = structuredClone(DEFAULT_OVERHEAD);
 
 // Each overhead line with its amount, statutory contributions worked out from staff salary.
 function overheadLines(o = overhead) {
@@ -125,7 +131,7 @@ async function pull() {
     expenses = normalizeExpenses(data.expenses || []);
     save(LS_EXPENSES, expenses);
     if (data.jobs) { jobs = data.jobs; save(LS_JOBS, jobs); }
-    if (data.overhead && typeof data.overhead === 'object') { overhead = { items: [], ...data.overhead }; save(LS_OVERHEAD, overhead); }
+    if (data.overhead && typeof data.overhead === 'object' && 'rent' in data.overhead) { overhead = { items: [], ...data.overhead }; save(LS_OVERHEAD, overhead); }
     if (data.target != null) settings.target = Number(data.target) || 0;
     save(LS_ENTRIES, entries);
     save(LS_SETTINGS, settings);
