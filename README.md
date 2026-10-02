@@ -64,6 +64,14 @@ After staff save a key in, the app opens the **Jobs** tab.
 - **Sales still needed to cover overhead** = break-even sales − sales so far, and how much that is per day for the rest of the month
 - Keep rent, salary and bills here instead of in Expenses, so they are not counted twice
 
+## Owner PIN (Settings tab)
+
+- Set a 4–8 digit PIN in **Settings → Owner PIN**. It is saved in Google Sheet, so every staff device picks it up on its next sync
+- With a PIN set, **Expenses**, **Overhead**, **Settings** and the **Delete** buttons in History ask for the PIN. Staff can still use Dashboard, Key In, Jobs and History
+- On your own phone or PC, tick **Keep unlocked on this device** so you don't have to type the PIN each time. Use the **🔓 Lock** button at the top to lock again
+- The PIN keeps staff out of owner pages in normal use. It is not strong security: someone who knows how to read the page code or has the Google Sheet link can still get to the data
+- Forgot the PIN? In the Google Sheet, open the **Settings** sheet, cell **B2**, delete the `"pinHash":"…"` part, then reload the app on your device
+
 ## How to use
 
 ### Option 1: One device only (easiest)

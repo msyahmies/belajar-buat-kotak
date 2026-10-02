@@ -48,6 +48,10 @@ const LS_SETTINGS = 'sales.settings';
 const LS_EXPENSES = 'sales.expenses';
 const LS_JOBS = 'sales.jobs';
 const LS_OVERHEAD = 'sales.overhead';
+const LS_PIN = 'sales.pinHash';
+const LS_KEEP_UNLOCKED = 'sales.keepUnlocked';
+const SS_UNLOCKED = 'sales.unlocked';
+const OWNER_TABS = ['expenses', 'overhead', 'settings'];
 const OVERHEAD_FIELDS = [
   { key: 'rent', label: 'Shop rent' },
   { key: 'salary', label: 'Staff salary' },
@@ -131,7 +135,11 @@ async function pull() {
     expenses = normalizeExpenses(data.expenses || []);
     save(LS_EXPENSES, expenses);
     if (data.jobs) { jobs = data.jobs; save(LS_JOBS, jobs); }
-    if (data.overhead && typeof data.overhead === 'object' && 'rent' in data.overhead) { overhead = { items: [], ...data.overhead }; save(LS_OVERHEAD, overhead); }
+    if (data.overhead && typeof data.overhead === 'object' && 'rent' in data.overhead) {
+      overhead = { items: [], ...data.overhead };
+      save(LS_OVERHEAD, overhead);
+      setPinHash(data.overhead.pinHash || ''); // the sheet decides the PIN once it is synced
+    }
     if (data.target != null) settings.target = Number(data.target) || 0;
     save(LS_ENTRIES, entries);
     save(LS_SETTINGS, settings);
@@ -374,6 +382,7 @@ function renderHistory() {
 }
 
 async function onDelete(id) {
+  if (!isUnlocked()) { askPin(null); return; }
   const e = entries.find(x => x.id === id);
   if (!e || !confirm(`Delete record ${e.date} (${rm(entryTotals(e).sales)})?`)) return;
   try {
@@ -724,6 +733,7 @@ function readOverheadForm() {
   o.items = $$('#oh-items .oh-item')
     .map(n => ({ name: $('[name=name]', n).value.trim(), amount: Number($('[name=amount]', n).value) || 0 }))
     .filter(i => i.name);
+  o.pinHash = pinHash; // the owner PIN travels with the overhead record
   return o;
 }
 
@@ -741,6 +751,112 @@ async function onSubmitOverhead(ev) {
     msg.className = 'msg err';
     msg.textContent = 'Saved on this device only. To share it, update Code.gs in Google Sheet to the latest version. (' + e.message + ')';
   }
+}
+
+// ---------- Owner PIN ----------
+// The PIN only hides owner pages inside the app; it is not real security, since the
+// page code and the Google Sheet link can still be read by someone determined.
+
+let pinHash = load(LS_PIN, '');
+
+function hashPin(pin) {
+  // FNV-1a over a salted string; the same on every device and browser.
+  let h = 0x811c9dc5;
+  for (const ch of 'shop-sales-tracker:' + pin) { h ^= ch.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+
+function sessionGet(k) { try { return sessionStorage.getItem(k); } catch { return null; } }
+function sessionSet(k, v) { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch { /* blocked */ } }
+
+const isUnlocked = () => !pinHash || sessionGet(SS_UNLOCKED) === pinHash || load(LS_KEEP_UNLOCKED, '') === pinHash;
+
+function setPinHash(h) {
+  if (h === pinHash) return;
+  pinHash = h;
+  save(LS_PIN, pinHash);
+  applyLock();
+}
+
+function applyLock() {
+  const locked = !isUnlocked();
+  document.body.classList.toggle('locked', locked);
+  $$('nav button').forEach(b => b.classList.toggle('locked', locked && OWNER_TABS.includes(b.dataset.tab)));
+  const btn = $('#lock-btn');
+  btn.hidden = !pinHash;
+  btn.textContent = locked ? '🔒 Owner' : '🔓 Lock';
+  $('#pin-state').textContent = pinHash ? 'A PIN is set.' : 'No PIN set. Anyone using the app can open every tab.';
+  $('#pin-save').textContent = pinHash ? 'Change PIN' : 'Set PIN';
+  $('#pin-remove').hidden = !pinHash;
+  const current = $('nav button.active')?.dataset.tab;
+  if (locked && OWNER_TABS.includes(current)) showTab('dashboard');
+}
+
+let pendingTab = null;
+function askPin(tab) {
+  pendingTab = tab;
+  const f = $('#unlock-form');
+  f.reset();
+  $('#unlock-msg').textContent = '';
+  $('#pin-modal').hidden = false;
+  f.pin.focus();
+}
+
+function onUnlock(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  if (hashPin(f.pin.value.trim()) !== pinHash) {
+    $('#unlock-msg').textContent = 'Wrong PIN. Try again.';
+    f.pin.select();
+    return;
+  }
+  sessionSet(SS_UNLOCKED, pinHash);
+  if (f.keep.checked) save(LS_KEEP_UNLOCKED, pinHash);
+  $('#pin-modal').hidden = true;
+  applyLock();
+  if (pendingTab) showTab(pendingTab);
+}
+
+function lockNow() {
+  sessionSet(SS_UNLOCKED, null);
+  try { localStorage.removeItem(LS_KEEP_UNLOCKED); } catch { /* blocked */ }
+  applyLock();
+}
+
+async function storePin(newHash, okText) {
+  const msg = $('#pin-msg');
+  setPinHash(newHash);
+  if (newHash) sessionSet(SS_UNLOCKED, newHash);
+  overhead = { ...overhead, pinHash: newHash };
+  save(LS_OVERHEAD, overhead);
+  applyLock();
+  try {
+    if (settings.syncUrl) await remote({ action: 'setOverhead', overhead });
+    msg.className = 'msg ok';
+    msg.textContent = okText;
+  } catch (e) {
+    msg.className = 'msg err';
+    msg.textContent = 'Saved on this device only. Update Code.gs in Google Sheet to the latest version so staff devices get the PIN. (' + e.message + ')';
+  }
+}
+
+function onSubmitPin(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const pin = f.pin.value.trim();
+  if (!/^\d{4,8}$/.test(pin)) { $('#pin-msg').className = 'msg err'; $('#pin-msg').textContent = 'Use 4 to 8 digits.'; return; }
+  if (pin !== f.pin2.value.trim()) { $('#pin-msg').className = 'msg err'; $('#pin-msg').textContent = 'The two PINs do not match.'; return; }
+  f.reset();
+  storePin(hashPin(pin), 'PIN saved. Staff devices lock the owner pages the next time they sync.');
+}
+
+let removeArmed = false;
+function onRemovePin() {
+  const btn = $('#pin-remove');
+  if (!removeArmed) { removeArmed = true; btn.textContent = 'Tap again to remove PIN'; setTimeout(() => { removeArmed = false; btn.textContent = 'Remove PIN'; }, 4000); return; }
+  removeArmed = false;
+  btn.textContent = 'Remove PIN';
+  storePin('', 'PIN removed. Every tab is open to everyone.');
 }
 
 // ---------- Settings ----------
@@ -779,6 +895,7 @@ function renderAll() {
 }
 
 function showTab(name) {
+  if (OWNER_TABS.includes(name) && !isUnlocked()) { askPin(name); return; }
   $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $$('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
   if (['dashboard', 'expenses', 'jobs', 'overhead'].includes(name) && settings.syncUrl) pull();
@@ -828,11 +945,17 @@ $('#job-list').addEventListener('submit', ev => {
   const form = ev.target;
   saveJob(form.dataset.job, { deposit: Number(form.deposit.value) || 0 });
 });
+$('#unlock-form').addEventListener('submit', onUnlock);
+$('#unlock-cancel').addEventListener('click', () => { $('#pin-modal').hidden = true; });
+$('#lock-btn').addEventListener('click', () => (isUnlocked() ? lockNow() : askPin('settings')));
+$('#pin-form').addEventListener('submit', onSubmitPin);
+$('#pin-remove').addEventListener('click', onRemovePin);
 $('#t-history').addEventListener('click', ev => {
   const id = ev.target.dataset?.del;
   if (id) onDelete(id);
 });
 
 resetForm();
+applyLock();
 renderAll();
 pull();

@@ -8,7 +8,10 @@
 </head>
 <body>
   <header>
-    <h1>Shop Sales Tracker</h1>
+    <div class="title-row">
+      <h1>Shop Sales Tracker</h1>
+      <button type="button" id="lock-btn" class="lock-btn" hidden></button>
+    </div>
     <nav>
       <button data-tab="dashboard" class="active">Dashboard</button>
       <button data-tab="input">Key In</button>
@@ -172,6 +175,19 @@
         <button type="submit">Save Settings</button>
         <p id="settings-msg" class="msg"></p>
       </form>
+
+      <h2>Owner PIN</h2>
+      <form id="pin-form" class="panel">
+        <p class="muted" id="pin-state"></p>
+        <p class="muted">With a PIN, staff can still use Dashboard, Key In, Jobs and History. Expenses, Overhead, Settings and the Delete buttons need the PIN.</p>
+        <label>New PIN (4–8 digits) <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{4,8}" autocomplete="new-password" required></label>
+        <label>Type the PIN again <input type="password" name="pin2" inputmode="numeric" pattern="[0-9]{4,8}" autocomplete="new-password" required></label>
+        <div class="btn-row">
+          <button type="submit" id="pin-save">Set PIN</button>
+          <button type="button" id="pin-remove" class="secondary" hidden>Remove PIN</button>
+        </div>
+        <p id="pin-msg" class="msg"></p>
+      </form>
     </section>
 
     <!-- EXPENSES -->
@@ -292,6 +308,21 @@
       </template>
     </section>
   </main>
+
+  <!-- PIN prompt for owner-only tabs -->
+  <div id="pin-modal" class="modal" hidden>
+    <form id="unlock-form" class="modal-box">
+      <h2>Owner PIN</h2>
+      <p class="muted">This page is for the owner only.</p>
+      <label>PIN <input type="password" name="pin" inputmode="numeric" autocomplete="current-password" required></label>
+      <label class="check"><input type="checkbox" name="keep"> Keep unlocked on this device (owner's own phone or PC only)</label>
+      <p id="unlock-msg" class="msg err"></p>
+      <div class="btn-row">
+        <button type="submit">Unlock</button>
+        <button type="button" id="unlock-cancel" class="secondary">Cancel</button>
+      </div>
+    </form>
+  </div>
 
   <script src="app.js"></script>
 </body>
