@@ -4,6 +4,7 @@
  * then Deploy > New deployment > Web app (Execute as: Me, Access: Anyone).
  */
 
+const TIME_ZONE = 'Asia/Kuala_Lumpur';
 const SHEET_ENTRIES = 'Sales';
 const SHEET_SETTINGS = 'Settings';
 const SHEET_EXPENSES = 'Expenses';
@@ -29,6 +30,9 @@ function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
+    // Keep the sheet on Kuala Lumpur time (GMT+8) so dates are read back correctly.
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss.getSpreadsheetTimeZone() !== TIME_ZONE) ss.setSpreadsheetTimeZone(TIME_ZONE);
     const req = JSON.parse(e.postData.contents);
     switch (req.action) {
       case 'list': return json({ ok: true, entries: listEntries(), expenses: listExpenses(), jobs: listJobs(), target: getTarget() });
@@ -68,12 +72,24 @@ function sheet(name) {
   return sh;
 }
 
+// Sheets can turn a typed date into a Date value; always hand back yyyy-mm-dd text.
+function dateText(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+  return String(v);
+}
+
+// Keep the date column as plain text so new rows are not converted.
+function appendWithTextDate(sh, row) {
+  sh.getRange('B:B').setNumberFormat('@');
+  sh.appendRow(row);
+}
+
 function listEntries() {
   const values = sheet(SHEET_ENTRIES).getDataRange().getValues();
   const jsonCol = HEADER.length - 1;
   return values.slice(1).filter(r => r[0]).map(r => ({
     id: String(r[0]),
-    date: String(r[1]),
+    date: dateText(r[1]),
     leads: Number(r[2]) || 0,
     converted: Number(r[3]) || 0,
     createdAt: String(r[jsonCol - 1]),
@@ -93,7 +109,7 @@ function addEntry(entry) {
     byCat[l.category] = (byCat[l.category] || 0) + q;
     byPrint[l.printing] = (byPrint[l.printing] || 0) + q;
   });
-  sheet(SHEET_ENTRIES).appendRow(
+  appendWithTextDate(sheet(SHEET_ENTRIES),
     [entry.id, entry.date, Number(entry.leads) || 0, Number(entry.converted) || 0, Number(entry.leads) ? (Number(entry.converted) / Number(entry.leads) * 100).toFixed(1) + '%' : '', pcs, sales, deposit, sales - deposit]
       .concat(CATEGORIES.map(c => byCat[c] || 0))
       .concat(PRINTINGS.map(p => byPrint[p] || 0))
@@ -104,7 +120,7 @@ function addEntry(entry) {
 function listExpenses() {
   return sheet(SHEET_EXPENSES).getDataRange().getValues().slice(1).filter(r => r[0]).map(r => ({
     id: String(r[0]),
-    date: String(r[1]),
+    date: dateText(r[1]),
     kind: ['Monthly', 'Bulanan'].includes(String(r[2])) ? 'bulanan' : 'harian',
     category: String(r[3]),
     amount: Number(r[4]) || 0,
@@ -115,7 +131,7 @@ function listExpenses() {
 
 function addExpense(x) {
   if (!x || !x.id || !x.date) throw new Error('Incomplete data');
-  sheet(SHEET_EXPENSES).appendRow([x.id, x.date, x.kind === 'bulanan' ? 'Monthly' : 'Daily', x.category, Number(x.amount) || 0, x.notes || '', x.createdAt]);
+  appendWithTextDate(sheet(SHEET_EXPENSES), [x.id, x.date, x.kind === 'bulanan' ? 'Monthly' : 'Daily', x.category, Number(x.amount) || 0, x.notes || '', x.createdAt]);
 }
 
 // Jobs are keyed "<sale id>:<row index>"; returns { key: { deposit, design, ... } }.

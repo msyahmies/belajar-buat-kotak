@@ -18,12 +18,28 @@ const LEGACY_NAMES = {
 };
 const rename = v => LEGACY_NAMES[v] ?? v;
 
+// All dates and times follow Kuala Lumpur time (GMT+8), whatever the device clock is set to.
+const TIME_ZONE = 'Asia/Kuala_Lumpur';
+const klDate = d => new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+
+// Google Sheet may turn "2026-10-02" into a full date string; bring it back to yyyy-mm-dd.
+function normDate(v) {
+  const s = String(v ?? '');
+  if (!s || /^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  return isNaN(d) ? s : klDate(d);
+}
+
 function normalizeEntries(list) {
-  list.forEach(e => e.lines.forEach(l => { l.category = rename(l.category); l.source = rename(l.source); }));
+  list.forEach(e => {
+    e.date = normDate(e.date);
+    e.createdAt = String(e.createdAt ?? '');
+    e.lines.forEach(l => { l.category = rename(l.category); l.source = rename(l.source); l.delivery = normDate(l.delivery); });
+  });
   return list;
 }
 function normalizeExpenses(list) {
-  list.forEach(x => { x.category = rename(x.category); });
+  list.forEach(x => { x.date = normDate(x.date); x.createdAt = String(x.createdAt ?? ''); x.category = rename(x.category); });
   return list;
 }
 
@@ -41,8 +57,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 const newId = () => crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
 
 function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return klDate(new Date());
 }
 
 function load(key, fallback) {
@@ -94,7 +109,7 @@ async function pull() {
     if (data.target != null) settings.target = Number(data.target) || 0;
     save(LS_ENTRIES, entries);
     save(LS_SETTINGS, settings);
-    setSyncStatus('Synced ' + new Date().toLocaleTimeString('en-MY'));
+    setSyncStatus('Synced ' + new Date().toLocaleTimeString('en-MY', { timeZone: TIME_ZONE }));
   } catch (e) {
     setSyncStatus('Sync failed: ' + e.message, true);
   }
