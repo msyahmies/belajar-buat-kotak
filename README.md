@@ -68,6 +68,9 @@ If several staff use their own phones, the data will **not** be shared. Use Opti
    - Execute as: **Me**
    - Who has access: **Anyone**
 4. Click Deploy, grant permission, then copy the **Web app URL** (ends with `/exec`).
+   Open that URL in a new tab: it should show `"message":"Shop Sales Tracker is connected"`.
+   If it shows *Script function not found: doGet*, the deployment runs old code: paste and save the latest
+   `Code.gs`, then **Deploy > Manage deployments > Edit > Version: New version > Deploy** (the URL stays the same).
 5. In the app, go to the **Settings** tab, paste that URL, fill in the monthly target, and Save.
    Do this once on every staff phone/PC.
 

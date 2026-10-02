@@ -20,6 +20,11 @@ const HEADER = ['ID', 'Date', 'Leads In', 'Leads Converted', '% Leads Converted'
   .concat(PRINTINGS.map(p => p + ' (pcs)'))
   .concat(['Entered At', 'Details (JSON)']);
 
+// Opening the /exec URL in a browser shows this, to confirm the right code is deployed.
+function doGet() {
+  return json({ ok: true, message: 'Shop Sales Tracker is connected', sheet: SpreadsheetApp.getActiveSpreadsheet().getName() });
+}
+
 function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);

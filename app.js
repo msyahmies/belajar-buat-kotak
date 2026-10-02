@@ -61,12 +61,17 @@ let jobs = load(LS_JOBS, {});
 
 async function remote(payload) {
   // text/plain avoids a CORS preflight, which Apps Script does not support.
-  const res = await fetch(settings.syncUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
+  let data;
+  try {
+    const res = await fetch(settings.syncUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+    data = await res.json();
+  } catch {
+    throw new Error('Cannot reach Google Sheet. Open the Apps Script URL in a new tab: it should say "Shop Sales Tracker is connected". If not, redeploy the latest Code.gs (see README).');
+  }
   if (!data.ok) throw new Error(data.error || 'Server error');
   return data;
 }
