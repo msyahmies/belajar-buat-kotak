@@ -154,6 +154,8 @@ function addLine() {
 
 function readLines() {
   return $$('#lines .line').map(n => ({
+    customer: $('[name=customer]', n).value.trim(),
+    phone: $('[name=phone]', n).value.trim(),
     category: $('[name=category]', n).value,
     printing: $('[name=printing]', n).value,
     qty: Number($('[name=qty]', n).value) || 0,
@@ -226,7 +228,7 @@ function renderHistory() {
   }
   tbody.innerHTML = list.map(e => {
     const t = entryTotals(e);
-    const detail = e.lines.map(l => `${l.qty} × ${esc(l.category)} (${esc(l.printing)}) ${rm(l.amount)}`).join('<br>');
+    const detail = e.lines.map(l => `${l.customer ? `<b>${esc(l.customer)}</b>${l.phone ? ` (${esc(l.phone)})` : ''}: ` : ''}${l.qty} × ${esc(l.category)} (${esc(l.printing)}) ${rm(l.amount)}`).join('<br>');
     return `<tr>
       <td>${e.date}</td><td class="num">${e.ws}</td><td class="num">${e.leads || 0}</td><td class="num">${e.converted || 0}</td>
       <td class="num">${t.pcs}</td><td class="num">${rm(t.sales)}</td>
@@ -250,10 +252,11 @@ async function onDelete(id) {
 }
 
 function exportCsv() {
-  const header = ['Tarikh', 'WS Masuk', 'Lead Masuk', 'Lead Convert', 'Kategori', 'Printing', 'Kuantiti', 'Jumlah (RM)'];
+  const header = ['Tarikh', 'WS Masuk', 'Lead Masuk', 'Lead Convert', 'Nama Customer', 'No Telefon', 'Kategori', 'Printing', 'Kuantiti', 'Jumlah (RM)'];
   const rows = [header];
+  // No telefon ditulis sebagai ="012..." supaya Excel tidak buang 0 di depan.
   for (const e of monthEntries().reverse()) {
-    e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.ws : 0, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, l.category, l.printing, l.qty, l.amount]));
+    e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.ws : 0, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount]));
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const a = document.createElement('a');

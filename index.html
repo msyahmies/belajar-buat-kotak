@@ -73,7 +73,7 @@
         </div>
 
         <h2>Jualan</h2>
-        <p class="muted">Satu baris untuk setiap order / jenis jualan.</p>
+        <p class="muted">Satu baris untuk setiap order customer.</p>
         <div id="lines"></div>
         <button type="button" id="add-line" class="secondary">+ Tambah Baris</button>
 
@@ -86,6 +86,8 @@
 
       <template id="line-tpl">
         <div class="line">
+          <label>Nama Customer <input type="text" name="customer" required placeholder="cth: Syarikat ABC"></label>
+          <label>No Telefon <input type="tel" name="phone" inputmode="tel" placeholder="cth: 012-3456789"></label>
           <label>Kategori
             <select name="category" required></select>
           </label>

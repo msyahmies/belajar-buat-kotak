@@ -105,7 +105,7 @@ button.danger { background: none; border-color: var(--danger); color: var(--dang
 
 .line {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 0.8fr 0.9fr auto;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   align-items: end;
   background: var(--surface);
@@ -114,12 +114,11 @@ button.danger { background: none; border-color: var(--danger); color: var(--dang
   padding: 10px 10px 0;
   margin-bottom: 8px;
 }
-.line .remove { background: none; color: var(--danger); border-color: var(--border); margin-bottom: 12px; padding: 9px 12px; }
+.line .remove { grid-column: 1 / -1; justify-self: end; background: none; color: var(--danger); border-color: var(--border); margin-bottom: 10px; padding: 6px 12px; }
 
 @media (max-width: 640px) {
   nav button { flex: 1; padding: 8px 4px; font-size: 0.9rem; }
   .line { grid-template-columns: 1fr 1fr; }
-  .line .remove { grid-column: span 2; }
 }
 
 .total-box { margin: 16px 0; font-size: 1.05rem; }

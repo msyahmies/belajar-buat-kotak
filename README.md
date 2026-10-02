@@ -8,7 +8,8 @@ Setiap kali staff key in:
 - **Tarikh**
 - **WS masuk**: berapa WhatsApp masuk hari itu
 - **Total lead masuk** dan **lead convert** (lead yang jadi order)
-- Satu atau lebih **baris jualan**, setiap baris ada:
+- Satu atau lebih **baris jualan** (satu baris setiap order), setiap baris ada:
+  - **Nama customer** dan **no telefon**
   - **Kategori**: Baju Pekerja / Baju Family Day / Baju Sukan / Baju Birthday
   - **Printing**: DTF / Sublimation
   - **Kuantiti** (pcs) dan **jumlah (RM)**
