@@ -5,8 +5,9 @@ Web app ringkas untuk staff key in jualan harian kedai baju printing.
 ## Apa yang direkod
 
 Setiap kali staff key in:
-- **Tarikh** dan **nama staff**
-- **WS masuk**: berapa WhatsApp/pertanyaan masuk hari itu
+- **Tarikh**
+- **WS masuk**: berapa WhatsApp masuk hari itu
+- **Total lead masuk** dan **lead convert** (lead yang jadi order)
 - Satu atau lebih **baris jualan**, setiap baris ada:
   - **Kategori**: Baju Pekerja / Baju Family Day / Baju Sukan / Baju Birthday
   - **Printing**: DTF / Sublimation
@@ -14,7 +15,8 @@ Setiap kali staff key in:
 
 ## Apa yang dipaparkan (Dashboard)
 
-- Sales, baju terjual dan WS masuk untuk hari dipilih
+- Sales, baju terjual, WS masuk, lead masuk, lead convert dan kadar convert (%) untuk hari dipilih
+- Jumlah lead dan kadar convert untuk sebulan
 - Target bulanan, sales bulan ini, **baki sales yang perlu untuk capai target**,
   dan berapa perlu dijual sehari untuk baki hari dalam bulan itu
 - Pecahan ikut kategori baju dan jenis printing (pcs dan RM)

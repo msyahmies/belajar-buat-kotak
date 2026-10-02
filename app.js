@@ -71,11 +71,13 @@ function entryTotals(e) {
 }
 
 function summarize(list) {
-  const out = { sales: 0, pcs: 0, ws: 0, byCategory: {}, byPrinting: {} };
+  const out = { sales: 0, pcs: 0, ws: 0, leads: 0, converted: 0, byCategory: {}, byPrinting: {} };
   CATEGORIES.forEach(c => out.byCategory[c] = { pcs: 0, sales: 0 });
   PRINTINGS.forEach(p => out.byPrinting[p] = { pcs: 0, sales: 0 });
   for (const e of list) {
     out.ws += Number(e.ws) || 0;
+    out.leads += Number(e.leads) || 0;
+    out.converted += Number(e.converted) || 0;
     for (const l of e.lines) {
       const qty = Number(l.qty) || 0, amt = Number(l.amount) || 0;
       out.pcs += qty;
@@ -93,6 +95,8 @@ function summarize(list) {
 
 // ---------- Dashboard ----------
 
+const convRate = s => s.leads ? (s.converted / s.leads * 100).toFixed(1) + '%' : '-';
+
 function renderDashboard() {
   const date = $('#dash-date').value || todayStr();
   const month = date.slice(0, 7);
@@ -101,6 +105,9 @@ function renderDashboard() {
   $('#d-sales').textContent = rm(day.sales);
   $('#d-pcs').textContent = day.pcs;
   $('#d-ws').textContent = day.ws;
+  $('#d-leads').textContent = day.leads;
+  $('#d-conv').textContent = day.converted;
+  $('#d-rate').textContent = convRate(day);
 
   const mon = summarize(entries.filter(e => e.date.startsWith(month)));
   const target = Number(settings.target) || 0;
@@ -113,6 +120,9 @@ function renderDashboard() {
   $('#m-label').textContent = new Date(y, m - 1, 1).toLocaleDateString('ms-MY', { month: 'long', year: 'numeric' });
   $('#m-target').textContent = target ? rm(target) : 'Belum ditetapkan';
   $('#m-sales').textContent = rm(mon.sales);
+  $('#m-leads').textContent = mon.leads;
+  $('#m-conv').textContent = mon.converted;
+  $('#m-rate').textContent = convRate(mon);
   $('#m-balance').textContent = target ? (balance ? rm(balance) : 'Target tercapai!') : '-';
   $('#m-days').textContent = daysLeft;
   $('#m-perday').textContent = target ? rm(balance / daysLeft) : '-';
@@ -161,15 +171,9 @@ function resetForm(keep) {
   const f = $('#entry-form');
   f.reset();
   f.date.value = keep?.date || todayStr();
-  f.staff.value = keep?.staff || '';
   $('#lines').innerHTML = '';
   addLine();
   updateFormTotal();
-}
-
-function renderStaffList() {
-  const names = [...new Set(entries.map(e => e.staff))].sort();
-  $('#staff-list').innerHTML = names.map(n => `<option value="${esc(n)}">`).join('');
 }
 
 async function onSubmitEntry(ev) {
@@ -179,8 +183,9 @@ async function onSubmitEntry(ev) {
   const entry = {
     id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2),
     date: f.date.value,
-    staff: f.staff.value.trim(),
     ws: Number(f.ws.value) || 0,
+    leads: Number(f.leads.value) || 0,
+    converted: Number(f.converted.value) || 0,
     lines: readLines(),
     createdAt: new Date().toISOString(),
   };
@@ -192,8 +197,8 @@ async function onSubmitEntry(ev) {
     entries.push(entry);
     save(LS_ENTRIES, entries);
     msg.className = 'msg ok';
-    msg.textContent = `Disimpan: ${rm(entryTotals(entry).sales)} oleh ${entry.staff}`;
-    resetForm({ date: entry.date, staff: entry.staff });
+    msg.textContent = `Disimpan: ${rm(entryTotals(entry).sales)} untuk ${entry.date}`;
+    resetForm({ date: entry.date });
     renderAll();
   } catch (e) {
     msg.className = 'msg err';
@@ -216,14 +221,14 @@ function renderHistory() {
   const list = monthEntries();
   const tbody = $('#t-history tbody');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="muted">Tiada rekod untuk bulan ini.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="muted">Tiada rekod untuk bulan ini.</td></tr>';
     return;
   }
   tbody.innerHTML = list.map(e => {
     const t = entryTotals(e);
     const detail = e.lines.map(l => `${l.qty} × ${esc(l.category)} (${esc(l.printing)}) ${rm(l.amount)}`).join('<br>');
     return `<tr>
-      <td>${e.date}</td><td>${esc(e.staff)}</td><td class="num">${e.ws}</td>
+      <td>${e.date}</td><td class="num">${e.ws}</td><td class="num">${e.leads || 0}</td><td class="num">${e.converted || 0}</td>
       <td class="num">${t.pcs}</td><td class="num">${rm(t.sales)}</td>
       <td class="muted">${detail}</td>
       <td><button class="danger" data-del="${esc(e.id)}">Padam</button></td>
@@ -233,7 +238,7 @@ function renderHistory() {
 
 async function onDelete(id) {
   const e = entries.find(x => x.id === id);
-  if (!e || !confirm(`Padam rekod ${e.date} oleh ${e.staff}?`)) return;
+  if (!e || !confirm(`Padam rekod ${e.date} (${rm(entryTotals(e).sales)})?`)) return;
   try {
     if (settings.syncUrl) await remote({ action: 'delete', id });
     entries = entries.filter(x => x.id !== id);
@@ -245,10 +250,10 @@ async function onDelete(id) {
 }
 
 function exportCsv() {
-  const header = ['Tarikh', 'Staff', 'WS Masuk', 'Kategori', 'Printing', 'Kuantiti', 'Jumlah (RM)'];
+  const header = ['Tarikh', 'WS Masuk', 'Lead Masuk', 'Lead Convert', 'Kategori', 'Printing', 'Kuantiti', 'Jumlah (RM)'];
   const rows = [header];
   for (const e of monthEntries().reverse()) {
-    e.lines.forEach((l, i) => rows.push([e.date, e.staff, i === 0 ? e.ws : 0, l.category, l.printing, l.qty, l.amount]));
+    e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.ws : 0, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, l.category, l.printing, l.qty, l.amount]));
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const a = document.createElement('a');
@@ -284,7 +289,6 @@ async function onSubmitSettings(ev) {
 function renderAll() {
   renderDashboard();
   renderHistory();
-  renderStaffList();
   const f = $('#settings-form');
   f.target.value = settings.target || '';
   f.syncUrl.value = settings.syncUrl || '';

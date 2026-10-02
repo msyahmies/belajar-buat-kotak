@@ -30,6 +30,9 @@
         <div class="card"><span>Sales</span><strong id="d-sales">RM 0.00</strong></div>
         <div class="card"><span>Baju Terjual</span><strong id="d-pcs">0</strong></div>
         <div class="card"><span>WS Masuk</span><strong id="d-ws">0</strong></div>
+        <div class="card"><span>Lead Masuk</span><strong id="d-leads">0</strong></div>
+        <div class="card"><span>Lead Convert</span><strong id="d-conv">0</strong></div>
+        <div class="card"><span>Kadar Convert</span><strong id="d-rate">-</strong></div>
       </div>
 
       <h2>Target Bulan <span id="m-label"></span></h2>
@@ -38,6 +41,11 @@
         <div class="card"><span>Sales Bulan Ini</span><strong id="m-sales">RM 0.00</strong></div>
         <div class="card highlight"><span>Baki Perlu Dicapai</span><strong id="m-balance">RM 0.00</strong></div>
         <div class="card"><span>Perlu Sehari (<span id="m-days">0</span> hari lagi)</span><strong id="m-perday">RM 0.00</strong></div>
+      </div>
+      <div class="cards" style="margin-top:12px">
+        <div class="card"><span>Lead Masuk Bulan Ini</span><strong id="m-leads">0</strong></div>
+        <div class="card"><span>Lead Convert Bulan Ini</span><strong id="m-conv">0</strong></div>
+        <div class="card"><span>Kadar Convert Bulan Ini</span><strong id="m-rate">-</strong></div>
       </div>
       <div class="progress"><div id="m-bar"></div></div>
       <p class="muted" id="m-pct"></p>
@@ -59,10 +67,10 @@
       <form id="entry-form">
         <div class="grid">
           <label>Tarikh <input type="date" name="date" required></label>
-          <label>Nama Staff <input type="text" name="staff" list="staff-list" required placeholder="cth: Aina"></label>
           <label>WS Masuk (bilangan) <input type="number" name="ws" min="0" value="0" required></label>
+          <label>Total Lead Masuk <input type="number" name="leads" min="0" value="0" required></label>
+          <label>Lead Convert <input type="number" name="converted" min="0" value="0" required></label>
         </div>
-        <datalist id="staff-list"></datalist>
 
         <h2>Jualan</h2>
         <p class="muted">Satu baris untuk setiap order / jenis jualan.</p>
@@ -99,7 +107,7 @@
       </div>
       <div class="table-wrap">
         <table id="t-history">
-          <thead><tr><th>Tarikh</th><th>Staff</th><th class="num">WS</th><th class="num">Pcs</th><th class="num">Sales</th><th>Butiran</th><th></th></tr></thead>
+          <thead><tr><th>Tarikh</th><th class="num">WS</th><th class="num">Lead</th><th class="num">Convert</th><th class="num">Pcs</th><th class="num">Sales</th><th>Butiran</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>

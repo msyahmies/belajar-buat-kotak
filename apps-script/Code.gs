@@ -9,7 +9,7 @@ const SHEET_SETTINGS = 'Tetapan';
 const CATEGORIES = ['Baju Pekerja', 'Baju Family Day', 'Baju Sukan', 'Baju Birthday'];
 const PRINTINGS = ['DTF', 'Sublimation'];
 
-const HEADER = ['ID', 'Tarikh', 'Staff', 'WS Masuk', 'Jumlah Pcs', 'Jumlah (RM)']
+const HEADER = ['ID', 'Tarikh', 'WS Masuk', 'Lead Masuk', 'Lead Convert', 'Jumlah Pcs', 'Jumlah (RM)']
   .concat(CATEGORIES.map(c => c + ' (pcs)'))
   .concat(PRINTINGS.map(p => p + ' (pcs)'))
   .concat(['Masa Key In', 'Butiran (JSON)']);
@@ -59,8 +59,9 @@ function listEntries() {
   return values.slice(1).filter(r => r[0]).map(r => ({
     id: String(r[0]),
     date: String(r[1]),
-    staff: String(r[2]),
-    ws: Number(r[3]) || 0,
+    ws: Number(r[2]) || 0,
+    leads: Number(r[3]) || 0,
+    converted: Number(r[4]) || 0,
     createdAt: String(r[jsonCol - 1]),
     lines: JSON.parse(r[jsonCol] || '[]'),
   }));
@@ -78,7 +79,7 @@ function addEntry(entry) {
     byPrint[l.printing] = (byPrint[l.printing] || 0) + q;
   });
   sheet(SHEET_ENTRIES).appendRow(
-    [entry.id, entry.date, entry.staff, Number(entry.ws) || 0, pcs, sales]
+    [entry.id, entry.date, Number(entry.ws) || 0, Number(entry.leads) || 0, Number(entry.converted) || 0, pcs, sales]
       .concat(CATEGORIES.map(c => byCat[c] || 0))
       .concat(PRINTINGS.map(p => byPrint[p] || 0))
       .concat([entry.createdAt, JSON.stringify(entry.lines)])
