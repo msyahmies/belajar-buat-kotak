@@ -1,20 +1,20 @@
 /**
- * Backend Google Sheet untuk Rekod Jualan Kedai.
- * Pasang: Extensions > Apps Script dalam Google Sheet, tampal fail ini,
- * kemudian Deploy > New deployment > Web app (Execute as: Me, Access: Anyone).
+ * Google Sheet backend for Shop Sales Tracker.
+ * Install: in Google Sheet open Extensions > Apps Script, paste this file,
+ * then Deploy > New deployment > Web app (Execute as: Me, Access: Anyone).
  */
 
-const SHEET_ENTRIES = 'Rekod';
-const SHEET_SETTINGS = 'Tetapan';
-const SHEET_EXPENSES = 'Belanja';
-const EXPENSE_HEADER = ['ID', 'Tarikh', 'Jenis', 'Kategori', 'Jumlah (RM)', 'Nota', 'Masa Key In'];
-const CATEGORIES = ['Baju Pekerja', 'Baju Family Day', 'Baju Sukan', 'Baju Birthday'];
+const SHEET_ENTRIES = 'Sales';
+const SHEET_SETTINGS = 'Settings';
+const SHEET_EXPENSES = 'Expenses';
+const EXPENSE_HEADER = ['ID', 'Date', 'Type', 'Category', 'Amount (RM)', 'Notes', 'Entered At'];
+const CATEGORIES = ['Work Shirt', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
 const PRINTINGS = ['DTF', 'Sublimation'];
 
-const HEADER = ['ID', 'Tarikh', 'Lead Masuk', 'Lead Convert', '% Lead Convert', 'Jumlah Pcs', 'Jumlah (RM)', 'Deposit (RM)', 'Baki (RM)']
+const HEADER = ['ID', 'Date', 'Leads In', 'Leads Converted', '% Leads Converted', 'Total Pcs', 'Total (RM)', 'Deposit (RM)', 'Balance (RM)']
   .concat(CATEGORIES.map(c => c + ' (pcs)'))
   .concat(PRINTINGS.map(p => p + ' (pcs)'))
-  .concat(['Masa Key In', 'Butiran (JSON)']);
+  .concat(['Entered At', 'Details (JSON)']);
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -28,7 +28,7 @@ function doPost(e) {
       case 'addExpense': addExpense(req.expense); return json({ ok: true });
       case 'deleteExpense': deleteRowById(SHEET_EXPENSES, req.id); return json({ ok: true });
       case 'setTarget': setTarget(req.target); return json({ ok: true });
-      default: return json({ ok: false, error: 'Tindakan tidak sah' });
+      default: return json({ ok: false, error: 'Invalid action' });
     }
   } catch (err) {
     return json({ ok: false, error: String(err) });
@@ -49,9 +49,9 @@ function sheet(name) {
     if (name === SHEET_ENTRIES || name === SHEET_EXPENSES) {
       sh.appendRow(name === SHEET_ENTRIES ? HEADER : EXPENSE_HEADER);
       sh.setFrozenRows(1);
-      sh.getRange('B:B').setNumberFormat('@'); // simpan tarikh sebagai teks yyyy-mm-dd
+      sh.getRange('B:B').setNumberFormat('@'); // keep dates as yyyy-mm-dd text
     } else {
-      sh.appendRow(['Target Bulanan (RM)', 0]);
+      sh.appendRow(['Monthly Target (RM)', 0]);
     }
   }
   return sh;
@@ -71,7 +71,7 @@ function listEntries() {
 }
 
 function addEntry(entry) {
-  if (!entry || !entry.id || !entry.date || !Array.isArray(entry.lines)) throw new Error('Data tidak lengkap');
+  if (!entry || !entry.id || !entry.date || !Array.isArray(entry.lines)) throw new Error('Incomplete data');
   let pcs = 0, sales = 0, deposit = 0;
   const byCat = {}, byPrint = {};
   entry.lines.forEach(l => {
@@ -94,7 +94,7 @@ function listExpenses() {
   return sheet(SHEET_EXPENSES).getDataRange().getValues().slice(1).filter(r => r[0]).map(r => ({
     id: String(r[0]),
     date: String(r[1]),
-    kind: String(r[2]) === 'Bulanan' ? 'bulanan' : 'harian',
+    kind: ['Monthly', 'Bulanan'].includes(String(r[2])) ? 'bulanan' : 'harian',
     category: String(r[3]),
     amount: Number(r[4]) || 0,
     notes: String(r[5]),
@@ -103,8 +103,8 @@ function listExpenses() {
 }
 
 function addExpense(x) {
-  if (!x || !x.id || !x.date) throw new Error('Data tidak lengkap');
-  sheet(SHEET_EXPENSES).appendRow([x.id, x.date, x.kind === 'bulanan' ? 'Bulanan' : 'Harian', x.category, Number(x.amount) || 0, x.notes || '', x.createdAt]);
+  if (!x || !x.id || !x.date) throw new Error('Incomplete data');
+  sheet(SHEET_EXPENSES).appendRow([x.id, x.date, x.kind === 'bulanan' ? 'Monthly' : 'Daily', x.category, Number(x.amount) || 0, x.notes || '', x.createdAt]);
 }
 
 function deleteEntry(id) {

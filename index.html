@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="ms">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rekod Jualan Kedai</title>
+  <title>Shop Sales Tracker</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
-    <h1>Rekod Jualan Kedai</h1>
+    <h1>Shop Sales Tracker</h1>
     <nav>
       <button data-tab="dashboard" class="active">Dashboard</button>
       <button data-tab="input">Key In</button>
-      <button data-tab="history">Sejarah</button>
-      <button data-tab="settings">Tetapan</button>
-      <button data-tab="expenses">Belanja</button>
+      <button data-tab="history">History</button>
+      <button data-tab="settings">Settings</button>
+      <button data-tab="expenses">Expenses</button>
     </nav>
   </header>
 
@@ -22,60 +22,60 @@
     <!-- DASHBOARD -->
     <section id="tab-dashboard" class="tab active">
       <div class="row">
-        <label>Tarikh <input type="date" id="dash-date"></label>
+        <label>Date <input type="date" id="dash-date"></label>
         <span id="sync-status" class="muted"></span>
       </div>
 
       <div class="card hero c-green">
-        <span>Sales Hari Ini</span>
+        <span>Today's Sales</span>
         <strong id="d-sales">RM 0.00</strong>
         <small id="d-sales-sub"></small>
       </div>
 
       <div class="cards key">
-        <div class="card c-yellow"><span>Target Sales Sehari</span><strong id="d-target">-</strong><small id="d-target-sub"></small></div>
-        <div class="card" id="d-balance-card"><span>Baki Sales Perlu Dicapai Hari Ini</span><strong id="d-balance">-</strong><small id="d-balance-sub"></small></div>
-        <div class="card c-red"><span>Baki Sales Perlu Dicapai Bulan Ini</span><strong id="m-balance">-</strong><small id="m-balance-sub"></small></div>
+        <div class="card c-yellow"><span>Daily Sales Target</span><strong id="d-target">-</strong><small id="d-target-sub"></small></div>
+        <div class="card" id="d-balance-card"><span>Sales Still Needed Today</span><strong id="d-balance">-</strong><small id="d-balance-sub"></small></div>
+        <div class="card c-red"><span>Sales Still Needed This Month</span><strong id="m-balance">-</strong><small id="m-balance-sub"></small></div>
       </div>
 
-      <h2>Hari Ini</h2>
+      <h2>Today</h2>
       <div class="cards">
-        <div class="card"><span>Baju Terjual</span><strong id="d-pcs">0</strong></div>
-        <div class="card"><span>Lead Masuk</span><strong id="d-leads">0</strong></div>
-        <div class="card"><span>Lead Convert</span><strong id="d-conv">0</strong></div>
-        <div class="card"><span>Kadar Convert</span><strong id="d-rate">-</strong></div>
+        <div class="card"><span>Shirts Sold</span><strong id="d-pcs">0</strong></div>
+        <div class="card"><span>Leads In</span><strong id="d-leads">0</strong></div>
+        <div class="card"><span>Leads Converted</span><strong id="d-conv">0</strong></div>
+        <div class="card"><span>Conversion Rate</span><strong id="d-rate">-</strong></div>
       </div>
 
-      <h2>Target Bulan <span id="m-label"></span></h2>
+      <h2>Target for <span id="m-label"></span></h2>
       <div class="cards">
         <div class="card"><span>Target</span><strong id="m-target">RM 0.00</strong></div>
-        <div class="card"><span>Sales Bulan Ini</span><strong id="m-sales">RM 0.00</strong></div>
-        <div class="card"><span>Hari Lagi</span><strong id="m-days">0</strong></div>
+        <div class="card"><span>Sales This Month</span><strong id="m-sales">RM 0.00</strong></div>
+        <div class="card"><span>Days Left</span><strong id="m-days">0</strong></div>
       </div>
       <div class="progress"><div id="m-bar"></div></div>
       <p class="muted" id="m-pct"></p>
 
-      <h2>Lead &amp; Bayaran (bulan ini)</h2>
+      <h2>Leads &amp; Payments (this month)</h2>
       <div class="cards">
-        <div class="card"><span>Lead Masuk</span><strong id="m-leads">0</strong></div>
-        <div class="card"><span>Lead Convert</span><strong id="m-conv">0</strong></div>
-        <div class="card"><span>Kadar Convert</span><strong id="m-rate">-</strong></div>
-        <div class="card"><span>Deposit Diterima</span><strong id="m-deposit">RM 0.00</strong></div>
-        <div class="card highlight"><span>Baki Belum Bayar</span><strong id="m-owed">RM 0.00</strong></div>
+        <div class="card"><span>Leads In</span><strong id="m-leads">0</strong></div>
+        <div class="card"><span>Leads Converted</span><strong id="m-conv">0</strong></div>
+        <div class="card"><span>Conversion Rate</span><strong id="m-rate">-</strong></div>
+        <div class="card"><span>Deposits Received</span><strong id="m-deposit">RM 0.00</strong></div>
+        <div class="card highlight"><span>Balance Unpaid</span><strong id="m-owed">RM 0.00</strong></div>
       </div>
 
       <div class="split">
         <div>
-          <h2>Kategori Baju (bulan ini)</h2>
-          <table id="t-category"><thead><tr><th>Kategori</th><th class="num">Pcs</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
+          <h2>Shirt Category (this month)</h2>
+          <table id="t-category"><thead><tr><th>Category</th><th class="num">Pcs</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
         </div>
         <div>
-          <h2>Jenis Printing (bulan ini)</h2>
+          <h2>Printing Type (this month)</h2>
           <table id="t-printing"><thead><tr><th>Printing</th><th class="num">Pcs</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
         </div>
         <div>
-          <h2>Lead Source (bulan ini)</h2>
-          <table id="t-source"><thead><tr><th>Source</th><th class="num">Order</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
+          <h2>Lead Source (this month)</h2>
+          <table id="t-source"><thead><tr><th>Source</th><th class="num">Orders</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
         </div>
       </div>
     </section>
@@ -84,44 +84,44 @@
     <section id="tab-input" class="tab">
       <form id="entry-form">
         <div class="grid">
-          <label>Tarikh <input type="date" name="date" required></label>
-          <label>Total Lead Masuk <input type="number" name="leads" min="0" value="0" required></label>
-          <label>Lead Convert <input type="number" name="converted" min="0" value="0" required></label>
-          <label>% Lead Convert <input type="text" name="convRate" readonly tabindex="-1" value="-"></label>
+          <label>Date <input type="date" name="date" required></label>
+          <label>Total Leads In <input type="number" name="leads" min="0" value="0" required></label>
+          <label>Leads Converted <input type="number" name="converted" min="0" value="0" required></label>
+          <label>% Leads Converted <input type="text" name="convRate" readonly tabindex="-1" value="-"></label>
         </div>
 
-        <h2>Jualan</h2>
-        <p class="muted">Satu baris untuk setiap order customer.</p>
+        <h2>Sales</h2>
+        <p class="muted">One row per customer order.</p>
         <div id="lines"></div>
-        <button type="button" id="add-line" class="secondary">+ Tambah Baris</button>
+        <button type="button" id="add-line" class="secondary">+ Add Row</button>
 
         <div class="total-box">
-          Jumlah: <strong id="f-pcs">0</strong> pcs · <strong id="f-sales">RM 0.00</strong>
+          Total: <strong id="f-pcs">0</strong> pcs · <strong id="f-sales">RM 0.00</strong>
         </div>
-        <button type="submit">Simpan</button>
+        <button type="submit">Save</button>
         <p id="form-msg" class="msg"></p>
       </form>
 
       <template id="line-tpl">
         <div class="line">
-          <label>Nama Customer <input type="text" name="customer" required placeholder="cth: Syarikat ABC"></label>
-          <label>No Telefon <input type="tel" name="phone" inputmode="tel" placeholder="cth: 012-3456789"></label>
-          <label>Kategori
+          <label>Customer Name <input type="text" name="customer" required placeholder="e.g. ABC Sdn Bhd"></label>
+          <label>Phone No. <input type="tel" name="phone" inputmode="tel" placeholder="e.g. 012-3456789"></label>
+          <label>Category
             <select name="category" required></select>
           </label>
           <label>Printing
             <select name="printing" required></select>
           </label>
-          <label>Kuantiti (pcs) <input type="number" name="qty" min="1" required></label>
+          <label>Quantity (pcs) <input type="number" name="qty" min="1" required></label>
           <label>Total (RM) <input type="number" name="amount" min="0" step="0.01" required></label>
           <label>Deposit (RM) <input type="number" name="deposit" min="0" step="0.01" value="0"></label>
-          <label>Baki (RM) <input type="text" name="balance" readonly tabindex="-1" value="RM 0.00"></label>
+          <label>Balance (RM) <input type="text" name="balance" readonly tabindex="-1" value="RM 0.00"></label>
           <label>Lead Source
             <select name="source" required></select>
           </label>
           <label>Expected Delivery <input type="date" name="delivery"></label>
-          <label class="wide">Notes <textarea name="notes" rows="2" placeholder="cth: saiz, warna, design"></textarea></label>
-          <button type="button" class="remove" title="Buang">✕</button>
+          <label class="wide">Notes <textarea name="notes" rows="2" placeholder="e.g. sizes, colours, design"></textarea></label>
+          <button type="button" class="remove" title="Remove">✕</button>
         </div>
       </template>
     </section>
@@ -129,12 +129,12 @@
     <!-- HISTORY -->
     <section id="tab-history" class="tab">
       <div class="row">
-        <label>Bulan <input type="month" id="hist-month"></label>
-        <button id="export-csv" class="secondary">Muat Turun CSV</button>
+        <label>Month <input type="month" id="hist-month"></label>
+        <button id="export-csv" class="secondary">Download CSV</button>
       </div>
       <div class="table-wrap">
         <table id="t-history">
-          <thead><tr><th>Tarikh</th><th class="num">Lead</th><th class="num">Convert</th><th class="num">% Convert</th><th class="num">Pcs</th><th class="num">Sales</th><th>Butiran</th><th></th></tr></thead>
+          <thead><tr><th>Date</th><th class="num">Leads</th><th class="num">Converted</th><th class="num">% Converted</th><th class="num">Pcs</th><th class="num">Sales</th><th>Details</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -143,12 +143,12 @@
     <!-- SETTINGS -->
     <section id="tab-settings" class="tab">
       <form id="settings-form">
-        <label>Target Sales Bulanan (RM) <input type="number" name="target" min="0" step="0.01"></label>
-        <label>URL Google Apps Script (pilihan — untuk kongsi data antara staff)
+        <label>Monthly Sales Target (RM) <input type="number" name="target" min="0" step="0.01"></label>
+        <label>Google Apps Script URL (optional, to share data between staff)
           <input type="url" name="syncUrl" placeholder="https://script.google.com/macros/s/.../exec">
         </label>
-        <p class="muted">Kosongkan URL jika guna satu peranti sahaja. Data akan disimpan dalam browser ini. Lihat README untuk cara setup Google Sheet.</p>
-        <button type="submit">Simpan Tetapan</button>
+        <p class="muted">Leave the URL empty if you only use one device. Data is then saved in this browser. See the README for how to set up Google Sheet.</p>
+        <button type="submit">Save Settings</button>
         <p id="settings-msg" class="msg"></p>
       </form>
     </section>
@@ -156,51 +156,51 @@
     <!-- EXPENSES -->
     <section id="tab-expenses" class="tab">
       <div class="row">
-        <label>Tarikh <input type="date" id="exp-date"></label>
+        <label>Date <input type="date" id="exp-date"></label>
       </div>
 
       <div class="card hero" id="p-month-card">
-        <span id="p-month-label">Untung / Rugi Bulan Ini</span>
+        <span id="p-month-label">Profit / Loss This Month</span>
         <strong id="p-month">RM 0.00</strong>
         <small id="p-month-sub"></small>
       </div>
 
       <div class="cards key">
-        <div class="card"><span>Sales Bulan Ini</span><strong id="p-sales">RM 0.00</strong></div>
-        <div class="card"><span>Belanja Bulan Ini</span><strong id="p-cost">RM 0.00</strong></div>
-        <div class="card" id="p-day-card"><span id="p-day-label">Untung / Rugi Hari Ini</span><strong id="p-day">RM 0.00</strong><small id="p-day-sub"></small></div>
+        <div class="card"><span>Sales This Month</span><strong id="p-sales">RM 0.00</strong></div>
+        <div class="card"><span>Expenses This Month</span><strong id="p-cost">RM 0.00</strong></div>
+        <div class="card" id="p-day-card"><span id="p-day-label">Profit / Loss Today</span><strong id="p-day">RM 0.00</strong><small id="p-day-sub"></small></div>
       </div>
 
-      <h2>Tambah Belanja</h2>
+      <h2>Add Expense</h2>
       <form id="expense-form" class="panel">
         <div class="grid">
-          <label>Tarikh <input type="date" name="date" required></label>
-          <label>Jenis
+          <label>Date <input type="date" name="date" required></label>
+          <label>Type
             <select name="kind">
-              <option value="harian">Harian (bahan, pos)</option>
-              <option value="bulanan">Bulanan (sewa, gaji, bil)</option>
+              <option value="harian">Daily (materials, postage)</option>
+              <option value="bulanan">Monthly (rent, salary, bills)</option>
             </select>
           </label>
-          <label>Kategori <select name="category" required></select></label>
-          <label>Jumlah (RM) <input type="number" name="amount" min="0.01" step="0.01" required></label>
+          <label>Category <select name="category" required></select></label>
+          <label>Amount (RM) <input type="number" name="amount" min="0.01" step="0.01" required></label>
         </div>
-        <label>Nota <input type="text" name="notes" placeholder="cth: sewa bulan Oktober"></label>
-        <p class="muted">Kos <b>bulanan</b> dibahagi sama rata setiap hari dalam bulan itu semasa kira untung harian, supaya hari bayar sewa tak nampak rugi besar.</p>
-        <button type="submit">Simpan Belanja</button>
+        <label>Notes <input type="text" name="notes" placeholder="e.g. October rent"></label>
+        <p class="muted"><b>Monthly</b> costs are spread evenly over every day of the month when working out daily profit, so the day you pay rent doesn't show a big loss.</p>
+        <button type="submit">Save Expense</button>
         <p id="expense-msg" class="msg"></p>
       </form>
 
       <div class="split">
         <div>
-          <h2>Belanja Ikut Kategori (bulan ini)</h2>
-          <table id="t-exp-cat"><thead><tr><th>Kategori</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
+          <h2>Expenses by Category (this month)</h2>
+          <table id="t-exp-cat"><thead><tr><th>Category</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
         </div>
       </div>
 
-      <h2>Senarai Belanja (bulan ini)</h2>
+      <h2>Expense List (this month)</h2>
       <div class="table-wrap">
         <table id="t-expenses">
-          <thead><tr><th>Tarikh</th><th>Jenis</th><th>Kategori</th><th class="num">RM</th><th>Nota</th><th></th></tr></thead>
+          <thead><tr><th>Date</th><th>Type</th><th>Category</th><th class="num">RM</th><th>Notes</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>

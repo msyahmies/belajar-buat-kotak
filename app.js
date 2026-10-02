@@ -1,10 +1,29 @@
-// Rekod Jualan Kedai — data disimpan dalam localStorage, dan (pilihan) disegerakkan
-// ke Google Sheet melalui Google Apps Script (lihat apps-script/Code.gs).
+// Shop Sales Tracker — data is kept in localStorage and (optionally) synced
+// to Google Sheet through Google Apps Script (see apps-script/Code.gs).
 
-const CATEGORIES = ['Baju Pekerja', 'Baju Family Day', 'Baju Sukan', 'Baju Birthday'];
+const CATEGORIES = ['Work Shirt', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
 const PRINTINGS = ['DTF', 'Sublimation'];
-const EXPENSE_CATEGORIES = ['Sewa Kedai', 'Gaji Staff', 'Bil Elektrik & Air', 'Internet & Telefon', 'Baju Kosong / Bahan', 'Ink & Film', 'Iklan / Ads', 'Penghantaran / Pos', 'Penyelenggaraan Mesin', 'Lain-lain'];
-const SOURCES = ['WhatsApp', 'Facebook', 'Instagram', 'TikTok', 'Walk-in', 'Referral', 'Customer Lama', 'Lain-lain'];
+const EXPENSE_CATEGORIES = ['Shop Rent', 'Staff Salary', 'Electricity & Water', 'Internet & Phone', 'Blank Shirts / Materials', 'Ink & Film', 'Advertising / Ads', 'Delivery / Postage', 'Machine Maintenance', 'Others'];
+const SOURCES = ['WhatsApp', 'Facebook', 'Instagram', 'TikTok', 'Walk-in', 'Referral', 'Returning Customer', 'Others'];
+
+// Names used by the earlier Malay version, so records saved before still group correctly.
+const LEGACY_NAMES = {
+  'Baju Pekerja': 'Work Shirt', 'Baju Family Day': 'Family Day Shirt', 'Baju Sukan': 'Sports Shirt', 'Baju Birthday': 'Birthday Shirt',
+  'Customer Lama': 'Returning Customer', 'Lain-lain': 'Others',
+  'Sewa Kedai': 'Shop Rent', 'Gaji Staff': 'Staff Salary', 'Bil Elektrik & Air': 'Electricity & Water', 'Internet & Telefon': 'Internet & Phone',
+  'Baju Kosong / Bahan': 'Blank Shirts / Materials', 'Iklan / Ads': 'Advertising / Ads', 'Penghantaran / Pos': 'Delivery / Postage',
+  'Penyelenggaraan Mesin': 'Machine Maintenance',
+};
+const rename = v => LEGACY_NAMES[v] ?? v;
+
+function normalizeEntries(list) {
+  list.forEach(e => e.lines.forEach(l => { l.category = rename(l.category); l.source = rename(l.source); }));
+  return list;
+}
+function normalizeExpenses(list) {
+  list.forEach(x => { x.category = rename(x.category); });
+  return list;
+}
 
 const LS_ENTRIES = 'sales.entries';
 const LS_SETTINGS = 'sales.settings';
@@ -13,7 +32,7 @@ const LS_EXPENSES = 'sales.expenses';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
-const rm = n => 'RM ' + (Number(n) || 0).toLocaleString('ms-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const rm = n => 'RM ' + (Number(n) || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const newId = () => crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
@@ -27,24 +46,24 @@ function load(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
 }
 function save(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage penuh / disekat */ }
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage full or blocked */ }
 }
 
-let entries = load(LS_ENTRIES, []);
+let entries = normalizeEntries(load(LS_ENTRIES, []));
 let settings = load(LS_SETTINGS, { target: 0, syncUrl: '' });
-let expenses = load(LS_EXPENSES, []);
+let expenses = normalizeExpenses(load(LS_EXPENSES, []));
 
 // ---------- Sync (Google Apps Script) ----------
 
 async function remote(payload) {
-  // text/plain mengelakkan CORS preflight yang tidak disokong oleh Apps Script.
+  // text/plain avoids a CORS preflight, which Apps Script does not support.
   const res = await fetch(settings.syncUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload),
   });
   const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Ralat server');
+  if (!data.ok) throw new Error(data.error || 'Server error');
   return data;
 }
 
@@ -55,24 +74,24 @@ function setSyncStatus(text, isErr = false) {
 }
 
 async function pull() {
-  if (!settings.syncUrl) { setSyncStatus('Mod luar talian (data dalam peranti ini)'); return; }
-  setSyncStatus('Memuat data…');
+  if (!settings.syncUrl) { setSyncStatus('Offline mode (data saved on this device)'); return; }
+  setSyncStatus('Loading data…');
   try {
     const data = await remote({ action: 'list' });
-    entries = data.entries;
-    expenses = data.expenses || [];
+    entries = normalizeEntries(data.entries);
+    expenses = normalizeExpenses(data.expenses || []);
     save(LS_EXPENSES, expenses);
     if (data.target != null) settings.target = Number(data.target) || 0;
     save(LS_ENTRIES, entries);
     save(LS_SETTINGS, settings);
-    setSyncStatus('Disegerakkan ' + new Date().toLocaleTimeString('ms-MY'));
+    setSyncStatus('Synced ' + new Date().toLocaleTimeString('en-MY'));
   } catch (e) {
-    setSyncStatus('Gagal segerak: ' + e.message, true);
+    setSyncStatus('Sync failed: ' + e.message, true);
   }
   renderAll();
 }
 
-// ---------- Kiraan ----------
+// ---------- Calculations ----------
 
 function entryTotals(e) {
   return e.lines.reduce((t, l) => ({ pcs: t.pcs + Number(l.qty), sales: t.sales + Number(l.amount) }), { pcs: 0, sales: 0 });
@@ -96,7 +115,7 @@ function summarize(list) {
       out.byPrinting[l.printing].pcs += qty;
       out.byPrinting[l.printing].sales += amt;
       out.deposit += Number(l.deposit) || 0;
-      const src = l.source || 'Tiada';
+      const src = l.source || 'None';
       (out.bySource[src] ??= { orders: 0, sales: 0 });
       out.bySource[src].orders += 1;
       out.bySource[src].sales += amt;
@@ -125,10 +144,10 @@ function renderDashboard() {
 
   const [y, m, d] = date.split('-').map(Number);
   const daysInMonth = new Date(y, m, 0).getDate();
-  const daysLeft = daysInMonth - d + 1; // termasuk hari dipilih
+  const daysLeft = daysInMonth - d + 1; // including the selected day
 
-  $('#m-label').textContent = new Date(y, m - 1, 1).toLocaleDateString('ms-MY', { month: 'long', year: 'numeric' });
-  $('#m-target').textContent = target ? rm(target) : 'Belum ditetapkan';
+  $('#m-label').textContent = new Date(y, m - 1, 1).toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
+  $('#m-target').textContent = target ? rm(target) : 'Not set';
   $('#m-sales').textContent = rm(mon.sales);
   $('#m-leads').textContent = mon.leads;
   $('#m-conv').textContent = mon.converted;
@@ -136,22 +155,22 @@ function renderDashboard() {
   $('#m-deposit').textContent = rm(mon.deposit);
   $('#m-owed').textContent = rm(mon.sales - mon.deposit);
   $('#m-days').textContent = daysLeft;
-  $('#m-balance').textContent = !target ? '-' : balance ? rm(balance) : 'Target tercapai!';
-  $('#m-balance-sub').textContent = target ? `daripada target ${rm(target)}` : 'Tetapkan target di tab Tetapan';
+  $('#m-balance').textContent = !target ? '-' : balance ? rm(balance) : 'Target reached!';
+  $('#m-balance-sub').textContent = target ? `of ${rm(target)} target` : 'Set a target in the Settings tab';
 
-  // Target harian = baki target pada awal hari dipilih, dibahagi baki hari (termasuk hari ini).
+  // Daily target = remaining target at the start of the selected day, divided by days left (including today).
   const salesBefore = summarize(entries.filter(e => e.date.startsWith(month) && e.date < date)).sales;
   const dailyTarget = target ? Math.max(target - salesBefore, 0) / daysLeft : 0;
   const dayBalance = Math.max(dailyTarget - day.sales, 0);
   const ratio = dailyTarget ? day.sales / dailyTarget : 1;
 
   $('#d-sales').textContent = rm(day.sales);
-  $('#d-sales-sub').textContent = `${day.pcs} pcs · ${day.converted} order convert`
-    + (dailyTarget ? ` · ${Math.round(ratio * 100)}% daripada target hari ini` : '');
+  $('#d-sales-sub').textContent = `${day.pcs} pcs · ${day.converted} leads converted`
+    + (dailyTarget ? ` · ${Math.round(ratio * 100)}% of today's target` : '');
   $('#d-target').textContent = target ? rm(dailyTarget) : '-';
-  $('#d-target-sub').textContent = target ? `${daysLeft} hari lagi bulan ini` : '';
-  $('#d-balance').textContent = !target ? '-' : dayBalance ? rm(dayBalance) : 'Target hari ini tercapai!';
-  $('#d-balance-sub').textContent = !target ? '' : ratio >= 1 ? 'Syabas!' : ratio >= 2 / 3 ? 'Hampir capai' : 'Perlu usaha lagi';
+  $('#d-target-sub').textContent = target ? `${daysLeft} days left this month` : '';
+  $('#d-balance').textContent = !target ? '-' : dayBalance ? rm(dayBalance) : "Today's target reached!";
+  $('#d-balance-sub').textContent = !target ? '' : ratio >= 1 ? 'Well done!' : ratio >= 2 / 3 ? 'Almost there' : 'Keep pushing';
   const card = $('#d-balance-card');
   card.classList.toggle('c-green', !!target && ratio >= 1);
   card.classList.toggle('c-yellow', !!target && ratio >= 2 / 3 && ratio < 1);
@@ -161,7 +180,7 @@ function renderDashboard() {
   const bar = $('#m-bar');
   bar.style.width = pct + '%';
   bar.classList.toggle('done', pct >= 100);
-  $('#m-pct').textContent = target ? `${(mon.sales / target * 100).toFixed(1)}% daripada target` : 'Tetapkan target di tab Tetapan.';
+  $('#m-pct').textContent = target ? `${(mon.sales / target * 100).toFixed(1)}% of target` : 'Set a target in the Settings tab.';
 
   const rows = obj => Object.entries(obj).map(([k, v]) =>
     `<tr><td>${esc(k)}</td><td class="num">${v.pcs}</td><td class="num">${rm(v.sales)}</td></tr>`).join('');
@@ -170,10 +189,10 @@ function renderDashboard() {
   const sources = Object.entries(mon.bySource).sort((a, b) => b[1].sales - a[1].sales);
   $('#t-source tbody').innerHTML = sources.length
     ? sources.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v.orders}</td><td class="num">${rm(v.sales)}</td></tr>`).join('')
-    : '<tr><td colspan="3" class="muted">Tiada order lagi.</td></tr>';
+    : '<tr><td colspan="3" class="muted">No orders yet.</td></tr>';
 }
 
-// ---------- Borang key in ----------
+// ---------- Key In form ----------
 
 function addLine() {
   const node = $('#line-tpl').content.firstElementChild.cloneNode(true);
@@ -249,18 +268,18 @@ async function onSubmitEntry(ev) {
     entries.push(entry);
     save(LS_ENTRIES, entries);
     msg.className = 'msg ok';
-    msg.textContent = `Disimpan: ${rm(entryTotals(entry).sales)} untuk ${entry.date}`;
+    msg.textContent = `Saved: ${rm(entryTotals(entry).sales)} for ${entry.date}`;
     resetForm({ date: entry.date });
     renderAll();
   } catch (e) {
     msg.className = 'msg err';
-    msg.textContent = 'Gagal simpan: ' + e.message;
+    msg.textContent = 'Save failed: ' + e.message;
   } finally {
     btn.disabled = false;
   }
 }
 
-// ---------- Sejarah ----------
+// ---------- History ----------
 
 function monthEntries() {
   const month = $('#hist-month').value || todayStr().slice(0, 7);
@@ -273,7 +292,7 @@ function lineDetail(l) {
   const parts = [
     `${l.customer ? `<b>${esc(l.customer)}</b>` : ''}${l.phone ? ` (${esc(l.phone)})` : ''}`,
     `${l.qty} × ${esc(l.category)} (${esc(l.printing)})`,
-    `Total ${rm(l.amount)} · Deposit ${rm(l.deposit)} · Baki ${rm((Number(l.amount) || 0) - (Number(l.deposit) || 0))}`,
+    `Total ${rm(l.amount)} · Deposit ${rm(l.deposit)} · Balance ${rm((Number(l.amount) || 0) - (Number(l.deposit) || 0))}`,
   ];
   if (l.source) parts.push(`Source: ${esc(l.source)}`);
   if (l.delivery) parts.push(`Delivery: ${esc(l.delivery)}`);
@@ -285,7 +304,7 @@ function renderHistory() {
   const list = monthEntries();
   const tbody = $('#t-history tbody');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="muted">Tiada rekod untuk bulan ini.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="muted">No records for this month.</td></tr>';
     return;
   }
   tbody.innerHTML = list.map(e => {
@@ -295,40 +314,40 @@ function renderHistory() {
       <td>${e.date}</td><td class="num">${e.leads || 0}</td><td class="num">${e.converted || 0}</td><td class="num">${convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 })}</td>
       <td class="num">${t.pcs}</td><td class="num">${rm(t.sales)}</td>
       <td class="muted">${detail}</td>
-      <td><button class="danger" data-del="${esc(e.id)}">Padam</button></td>
+      <td><button class="danger" data-del="${esc(e.id)}">Delete</button></td>
     </tr>`;
   }).join('');
 }
 
 async function onDelete(id) {
   const e = entries.find(x => x.id === id);
-  if (!e || !confirm(`Padam rekod ${e.date} (${rm(entryTotals(e).sales)})?`)) return;
+  if (!e || !confirm(`Delete record ${e.date} (${rm(entryTotals(e).sales)})?`)) return;
   try {
     if (settings.syncUrl) await remote({ action: 'delete', id });
     entries = entries.filter(x => x.id !== id);
     save(LS_ENTRIES, entries);
     renderAll();
   } catch (err) {
-    alert('Gagal padam: ' + err.message);
+    alert('Delete failed: ' + err.message);
   }
 }
 
 function exportCsv() {
-  const header = ['Tarikh', 'Lead Masuk', 'Lead Convert', '% Lead Convert', 'Nama Customer', 'No Telefon', 'Kategori', 'Printing', 'Kuantiti', 'Total (RM)', 'Deposit (RM)', 'Baki (RM)', 'Lead Source', 'Expected Delivery', 'Notes'];
+  const header = ['Date', 'Leads In', 'Leads Converted', '% Leads Converted', 'Customer Name', 'Phone No.', 'Category', 'Printing', 'Quantity', 'Total (RM)', 'Deposit (RM)', 'Balance (RM)', 'Lead Source', 'Expected Delivery', 'Notes'];
   const rows = [header];
-  // No telefon ditulis sebagai ="012..." supaya Excel tidak buang 0 di depan.
+  // Phone is written as ="012..." so Excel keeps the leading 0.
   for (const e of monthEntries().reverse()) {
     e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, i === 0 ? convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 }) : '', l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, l.deposit || 0, (Number(l.amount) || 0) - (Number(l.deposit) || 0), l.source || '', l.delivery || '', l.notes || '']));
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
-  a.download = `jualan-${$('#hist-month').value}.csv`;
+  a.download = `sales-${$('#hist-month').value}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
 
-// ---------- Belanja / Untung Rugi ----------
+// ---------- Expenses / Profit & Loss ----------
 
 const sumAmount = list => list.reduce((t, x) => t + (Number(x.amount) || 0), 0);
 
@@ -342,29 +361,30 @@ function renderExpenses() {
   const month = date.slice(0, 7);
   const [y, m] = date.split('-').map(Number);
   const daysInMonth = new Date(y, m, 0).getDate();
-  const monthName = new Date(y, m - 1, 1).toLocaleDateString('ms-MY', { month: 'long', year: 'numeric' });
+  const monthName = new Date(y, m - 1, 1).toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
 
   const monExp = expenses.filter(x => x.date.startsWith(month));
   const monSales = summarize(entries.filter(e => e.date.startsWith(month))).sales;
   const monCost = sumAmount(monExp);
   const monProfit = monSales - monCost;
 
-  $('#p-month-label').textContent = `${monProfit >= 0 ? 'Untung' : 'Rugi'} Bulan ${monthName}`;
+  $('#p-month-label').textContent = `${monProfit >= 0 ? 'Profit' : 'Loss'} for ${monthName}`;
   $('#p-month').textContent = rm(Math.abs(monProfit));
-  $('#p-month-sub').textContent = `Sales ${rm(monSales)} − Belanja ${rm(monCost)}`
+  $('#p-month-sub').textContent = `Sales ${rm(monSales)} − Expenses ${rm(monCost)}`
     + (monSales ? ` · margin ${(monProfit / monSales * 100).toFixed(1)}%` : '');
   setProfitCard($('#p-month-card'), monProfit);
   $('#p-sales').textContent = rm(monSales);
   $('#p-cost').textContent = rm(monCost);
 
-  // Untung harian: sales hari itu − belanja harian hari itu − bahagian sehari kos bulanan.
+  // Daily profit: that day's sales − that day's daily expenses − one day's share of monthly costs.
+  // Expense kind is stored as 'harian' (daily) or 'bulanan' (monthly), as in earlier records.
   const daySales = summarize(entries.filter(e => e.date === date)).sales;
   const dayCost = sumAmount(monExp.filter(x => x.kind !== 'bulanan' && x.date === date));
   const overheadPerDay = sumAmount(monExp.filter(x => x.kind === 'bulanan')) / daysInMonth;
   const dayProfit = daySales - dayCost - overheadPerDay;
-  $('#p-day-label').textContent = `${dayProfit >= 0 ? 'Untung' : 'Rugi'} Hari Ini`;
+  $('#p-day-label').textContent = `${dayProfit >= 0 ? 'Profit' : 'Loss'} Today`;
   $('#p-day').textContent = rm(Math.abs(dayProfit));
-  $('#p-day-sub').textContent = `Sales ${rm(daySales)} − belanja ${rm(dayCost)} − overhead ${rm(overheadPerDay)}/hari`;
+  $('#p-day-sub').textContent = `Sales ${rm(daySales)} − expenses ${rm(dayCost)} − overhead ${rm(overheadPerDay)}/day`;
   setProfitCard($('#p-day-card'), dayProfit);
 
   const byCat = {};
@@ -372,16 +392,16 @@ function renderExpenses() {
   const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
   $('#t-exp-cat tbody').innerHTML = cats.length
     ? cats.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${rm(v)}</td></tr>`).join('')
-    : '<tr><td colspan="2" class="muted">Tiada belanja lagi.</td></tr>';
+    : '<tr><td colspan="2" class="muted">No expenses yet.</td></tr>';
 
   const list = [...monExp].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
   $('#t-expenses tbody').innerHTML = list.length
     ? list.map(x => `<tr>
-        <td>${esc(x.date)}</td><td>${x.kind === 'bulanan' ? 'Bulanan' : 'Harian'}</td><td>${esc(x.category)}</td>
+        <td>${esc(x.date)}</td><td>${x.kind === 'bulanan' ? 'Monthly' : 'Daily'}</td><td>${esc(x.category)}</td>
         <td class="num">${rm(x.amount)}</td><td class="muted">${esc(x.notes || '')}</td>
-        <td><button class="danger" data-del-exp="${esc(x.id)}">Padam</button></td>
+        <td><button class="danger" data-del-exp="${esc(x.id)}">Delete</button></td>
       </tr>`).join('')
-    : '<tr><td colspan="6" class="muted">Tiada belanja untuk bulan ini.</td></tr>';
+    : '<tr><td colspan="6" class="muted">No expenses for this month.</td></tr>';
 }
 
 async function onSubmitExpense(ev) {
@@ -404,13 +424,13 @@ async function onSubmitExpense(ev) {
     expenses.push(expense);
     save(LS_EXPENSES, expenses);
     msg.className = 'msg ok';
-    msg.textContent = `Disimpan: ${expense.category} ${rm(expense.amount)}`;
+    msg.textContent = `Saved: ${expense.category} ${rm(expense.amount)}`;
     f.amount.value = '';
     f.notes.value = '';
     renderExpenses();
   } catch (e) {
     msg.className = 'msg err';
-    msg.textContent = 'Gagal simpan: ' + e.message;
+    msg.textContent = 'Save failed: ' + e.message;
   } finally {
     btn.disabled = false;
   }
@@ -418,18 +438,18 @@ async function onSubmitExpense(ev) {
 
 async function onDeleteExpense(id) {
   const x = expenses.find(e => e.id === id);
-  if (!x || !confirm(`Padam belanja ${x.category} ${rm(x.amount)} (${x.date})?`)) return;
+  if (!x || !confirm(`Delete expense ${x.category} ${rm(x.amount)} (${x.date})?`)) return;
   try {
     if (settings.syncUrl) await remote({ action: 'deleteExpense', id });
     expenses = expenses.filter(e => e.id !== id);
     save(LS_EXPENSES, expenses);
     renderExpenses();
   } catch (err) {
-    alert('Gagal padam: ' + err.message);
+    alert('Delete failed: ' + err.message);
   }
 }
 
-// ---------- Tetapan ----------
+// ---------- Settings ----------
 
 async function onSubmitSettings(ev) {
   ev.preventDefault();
@@ -442,10 +462,10 @@ async function onSubmitSettings(ev) {
   try {
     if (settings.syncUrl && !urlChanged) await remote({ action: 'setTarget', target: settings.target });
     msg.className = 'msg ok';
-    msg.textContent = 'Tetapan disimpan.';
+    msg.textContent = 'Settings saved.';
   } catch (e) {
     msg.className = 'msg err';
-    msg.textContent = 'Disimpan dalam peranti, tetapi gagal hantar ke server: ' + e.message;
+    msg.textContent = 'Saved on this device, but failed to send to the server: ' + e.message;
   }
   if (urlChanged) await pull(); else renderAll();
 }

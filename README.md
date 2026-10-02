@@ -1,66 +1,67 @@
-# Rekod Jualan Kedai
+# Shop Sales Tracker
 
-Web app ringkas untuk staff key in jualan harian kedai baju printing.
+A simple web app for staff to key in the daily sales of a shirt printing shop.
 
-## Apa yang direkod
+## What is recorded
 
-Setiap kali staff key in:
-- **Tarikh**
-- **Total lead masuk** dan **lead convert** (lead yang jadi order). **% lead convert** dikira automatik
-- Satu atau lebih **baris jualan** (satu baris setiap order), setiap baris ada:
-  - **Nama customer** dan **no telefon**
-  - **Kategori**: Baju Pekerja / Baju Family Day / Baju Sukan / Baju Birthday
+Each time staff key in:
+- **Date**
+- **Total leads in** and **leads converted** (leads that became orders). **% leads converted** is calculated automatically
+- One or more **sales rows** (one row per order), each with:
+  - **Customer name** and **phone no.**
+  - **Category**: Work Shirt / Family Day Shirt / Sports Shirt / Birthday Shirt
   - **Printing**: DTF / Sublimation
-  - **Kuantiti** (pcs)
-  - **Lead source** (WhatsApp, Facebook, Instagram, TikTok, Walk-in, Referral, Customer Lama, Lain-lain)
-  - **Expected delivery** (tarikh siap/hantar)
-  - **Total (RM)**, **deposit**, dan **baki** (dikira automatik)
+  - **Quantity** (pcs)
+  - **Total (RM)**, **deposit**, and **balance** (calculated automatically)
+  - **Lead source** (WhatsApp, Facebook, Instagram, TikTok, Walk-in, Referral, Returning Customer, Others)
+  - **Expected delivery** date
   - **Notes**
 
-## Apa yang dipaparkan (Dashboard)
+## What the Dashboard shows
 
-- Sales, baju terjual, lead masuk, lead convert dan kadar convert (%) untuk hari dipilih
-- Jumlah lead dan kadar convert untuk sebulan
-- Target bulanan, sales bulan ini, **baki sales yang perlu untuk capai target**,
-  dan berapa perlu dijual sehari untuk baki hari dalam bulan itu
-- Deposit diterima dan baki belum bayar sebulan
-- Pecahan ikut kategori baju, jenis printing dan lead source
-- Tab **Sejarah**: senarai rekod sebulan, padam rekod yang salah, muat turun CSV (boleh buka dalam Excel)
+- **Today's sales** (large green card)
+- **Daily sales target** (yellow): remaining monthly target ÷ days left in the month
+- **Sales still needed today**: red below 2/3 of the daily target, yellow from 2/3, green once reached
+- **Sales still needed this month** (red)
+- Shirts sold, leads in, leads converted and conversion rate for the day and the month
+- Deposits received and balance unpaid for the month
+- Breakdown by shirt category, printing type and lead source
+- **History** tab: monthly list of records, delete wrong records, download CSV (opens in Excel)
 
-## Belanja & Untung Rugi (tab Belanja)
+## Expenses & Profit/Loss (Expenses tab)
 
-- Masukkan setiap belanja: tarikh, jenis, kategori (sewa, gaji, bil, bahan, ink, iklan dll), jumlah dan nota
-- **Jenis Harian**: kos hari itu sahaja (cth: beli bahan, pos)
-- **Jenis Bulanan / overhead**: kos tetap bulanan (cth: sewa, gaji, bil). Untuk untung harian, kos ini dibahagi sama rata setiap hari dalam bulan itu
-- **Untung/Rugi bulan** = sales bulan − semua belanja bulan (hijau = untung, merah = rugi)
-- **Untung/Rugi hari** = sales hari − belanja harian hari itu − (overhead bulan ÷ bilangan hari)
+- Enter every expense: date, type, category (rent, salary, bills, materials, ink, ads, etc.), amount and notes
+- **Daily** type: a cost for that day only (e.g. materials, postage)
+- **Monthly / overhead** type: fixed monthly costs (e.g. rent, salary, bills). For daily profit, these are spread evenly over every day of the month
+- **Monthly profit/loss** = month's sales − all month's expenses (green = profit, red = loss)
+- **Daily profit/loss** = day's sales − that day's daily expenses − (monthly overhead ÷ days in month)
 
-## Cara guna
+## How to use
 
-### Pilihan 1: Satu peranti sahaja (paling senang)
-Buka `index.html` dalam browser (Chrome dsb.). Data disimpan dalam browser peranti itu.
-Kalau ramai staff guna peranti/phone sendiri, data **tidak** akan berkongsi. Guna Pilihan 2.
+### Option 1: One device only (easiest)
+Open `index.html` in a browser (Chrome etc.). Data is saved in that device's browser.
+If several staff use their own phones, the data will **not** be shared. Use Option 2.
 
-### Pilihan 2: Kongsi data semua staff (Google Sheet, percuma)
-1. Buat Google Sheet baru.
-2. Klik **Extensions > Apps Script**, padam kod sedia ada, tampal isi `apps-script/Code.gs`, kemudian Save.
-3. Klik **Deploy > New deployment**, pilih jenis **Web app**:
+### Option 2: Share data between all staff (Google Sheet, free)
+1. Create a new Google Sheet.
+2. Click **Extensions > Apps Script**, delete the existing code, paste the contents of `apps-script/Code.gs`, then Save.
+3. Click **Deploy > New deployment**, choose type **Web app**:
    - Execute as: **Me**
    - Who has access: **Anyone**
-4. Klik Deploy, beri kebenaran, kemudian salin **Web app URL** (berakhir dengan `/exec`).
-5. Dalam app, pergi ke tab **Tetapan**, tampal URL itu, isi target bulanan, dan Simpan.
-   Buat langkah ini sekali pada setiap phone/PC staff.
+4. Click Deploy, grant permission, then copy the **Web app URL** (ends with `/exec`).
+5. In the app, go to the **Settings** tab, paste that URL, fill in the monthly target, and Save.
+   Do this once on every staff phone/PC.
 
-Semua rekod akan masuk ke sheet **Rekod** dalam Google Sheet itu (satu baris setiap key in,
-dengan lajur pcs ikut kategori dan printing), jadi bos boleh semak terus dalam Google Sheet.
-Target disimpan dalam sheet **Tetapan**.
+All sales go to the **Sales** sheet in that Google Sheet (one row per key in, with pcs columns
+by category and printing), so the owner can check them directly in Google Sheet. Expenses go to
+the **Expenses** sheet, and the target is kept in the **Settings** sheet.
 
-> Sesiapa yang ada URL `/exec` itu boleh tambah atau padam rekod. Jangan kongsi URL itu di luar staff.
+> Anyone with the `/exec` URL can add or delete records. Don't share the URL outside your staff.
 
-### Hosting supaya staff boleh buka dari phone
-Paling mudah guna **GitHub Pages**: Settings > Pages > pilih branch, kemudian kongsi link itu
-dengan staff. Mereka boleh "Add to Home Screen" supaya ia nampak macam app.
+### Hosting so staff can open it on their phones
+The easiest way is **GitHub Pages**: Settings > Pages > choose the branch, then share the link
+with staff. They can use "Add to Home Screen" so it looks like an app.
 
-## Tukar kategori / jenis printing
-Edit senarai `CATEGORIES`, `PRINTINGS` dan `SOURCES` di bahagian atas `app.js` **dan** `apps-script/Code.gs`
-(kalau guna Google Sheet, deploy semula selepas edit).
+## Changing categories / printing types / lead sources
+Edit the `CATEGORIES`, `PRINTINGS`, `SOURCES` and `EXPENSE_CATEGORIES` lists at the top of `app.js`.
+`CATEGORIES` and `PRINTINGS` are also in `apps-script/Code.gs` (redeploy after editing if you use Google Sheet).
