@@ -108,7 +108,6 @@ function renderDashboard() {
   const month = date.slice(0, 7);
 
   const day = summarize(entries.filter(e => e.date === date));
-  $('#d-sales').textContent = rm(day.sales);
   $('#d-pcs').textContent = day.pcs;
   $('#d-ws').textContent = day.ws;
   $('#d-leads').textContent = day.leads;
@@ -131,9 +130,27 @@ function renderDashboard() {
   $('#m-rate').textContent = convRate(mon);
   $('#m-deposit').textContent = rm(mon.deposit);
   $('#m-owed').textContent = rm(mon.sales - mon.deposit);
-  $('#m-balance').textContent = target ? (balance ? rm(balance) : 'Target tercapai!') : '-';
   $('#m-days').textContent = daysLeft;
-  $('#m-perday').textContent = target ? rm(balance / daysLeft) : '-';
+  $('#m-balance').textContent = !target ? '-' : balance ? rm(balance) : 'Target tercapai!';
+  $('#m-balance-sub').textContent = target ? `daripada target ${rm(target)}` : 'Tetapkan target di tab Tetapan';
+
+  // Target harian = baki target pada awal hari dipilih, dibahagi baki hari (termasuk hari ini).
+  const salesBefore = summarize(entries.filter(e => e.date.startsWith(month) && e.date < date)).sales;
+  const dailyTarget = target ? Math.max(target - salesBefore, 0) / daysLeft : 0;
+  const dayBalance = Math.max(dailyTarget - day.sales, 0);
+  const ratio = dailyTarget ? day.sales / dailyTarget : 1;
+
+  $('#d-sales').textContent = rm(day.sales);
+  $('#d-sales-sub').textContent = `${day.pcs} pcs · ${day.converted} order convert`
+    + (dailyTarget ? ` · ${Math.round(ratio * 100)}% daripada target hari ini` : '');
+  $('#d-target').textContent = target ? rm(dailyTarget) : '-';
+  $('#d-target-sub').textContent = target ? `${daysLeft} hari lagi bulan ini` : '';
+  $('#d-balance').textContent = !target ? '-' : dayBalance ? rm(dayBalance) : 'Target hari ini tercapai!';
+  $('#d-balance-sub').textContent = !target ? '' : ratio >= 1 ? 'Syabas!' : ratio >= 2 / 3 ? 'Hampir capai' : 'Perlu usaha lagi';
+  const card = $('#d-balance-card');
+  card.classList.toggle('c-green', !!target && ratio >= 1);
+  card.classList.toggle('c-yellow', !!target && ratio >= 2 / 3 && ratio < 1);
+  card.classList.toggle('c-red', !!target && ratio < 2 / 3);
 
   const pct = target ? Math.min(mon.sales / target * 100, 100) : 0;
   const bar = $('#m-bar');

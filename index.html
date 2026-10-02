@@ -25,9 +25,20 @@
         <span id="sync-status" class="muted"></span>
       </div>
 
+      <div class="card hero c-green">
+        <span>Sales Hari Ini</span>
+        <strong id="d-sales">RM 0.00</strong>
+        <small id="d-sales-sub"></small>
+      </div>
+
+      <div class="cards key">
+        <div class="card c-yellow"><span>Target Sales Sehari</span><strong id="d-target">-</strong><small id="d-target-sub"></small></div>
+        <div class="card" id="d-balance-card"><span>Baki Sales Perlu Dicapai Hari Ini</span><strong id="d-balance">-</strong><small id="d-balance-sub"></small></div>
+        <div class="card c-red"><span>Baki Sales Perlu Dicapai Bulan Ini</span><strong id="m-balance">-</strong><small id="m-balance-sub"></small></div>
+      </div>
+
       <h2>Hari Ini</h2>
       <div class="cards">
-        <div class="card"><span>Sales</span><strong id="d-sales">RM 0.00</strong></div>
         <div class="card"><span>Baju Terjual</span><strong id="d-pcs">0</strong></div>
         <div class="card"><span>WS Masuk</span><strong id="d-ws">0</strong></div>
         <div class="card"><span>Lead Masuk</span><strong id="d-leads">0</strong></div>
@@ -39,8 +50,7 @@
       <div class="cards">
         <div class="card"><span>Target</span><strong id="m-target">RM 0.00</strong></div>
         <div class="card"><span>Sales Bulan Ini</span><strong id="m-sales">RM 0.00</strong></div>
-        <div class="card highlight"><span>Baki Perlu Dicapai</span><strong id="m-balance">RM 0.00</strong></div>
-        <div class="card"><span>Perlu Sehari (<span id="m-days">0</span> hari lagi)</span><strong id="m-perday">RM 0.00</strong></div>
+        <div class="card"><span>Hari Lagi</span><strong id="m-days">0</strong></div>
       </div>
       <div class="progress"><div id="m-bar"></div></div>
       <p class="muted" id="m-pct"></p>
