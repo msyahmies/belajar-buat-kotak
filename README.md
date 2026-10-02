@@ -28,6 +28,24 @@ Each time staff key in:
 - Breakdown by shirt category, printing type and lead source
 - **History** tab: monthly list of records, delete wrong records, download CSV (opens in Excel)
 
+## Job Status (Jobs tab)
+
+After staff save a key in, the app opens the **Jobs** tab.
+
+- Every order row **with a deposit** becomes a job. Orders without a deposit wait under **Waiting deposit**; enter the deposit there when the customer pays and the job starts
+- Each job has these steps:
+  1. **Design**: Done / Needs Revision / Waiting Decision
+  2. **Shirt Order**: Ordered / Not Ordered
+  3. **Shirt Status**: Need to Order / Not Picked Up / Picked Up
+  4. **Print DTF** (or Print Sublimation): Sent / Arrived
+  5. **Heat Press**: Not Started / In Progress / Done
+  6. **Packing**: Not Yet / Done
+  7. **Post / Pickup**
+  8. **Post Status**: Not Sent / Sent (or **Pickup Status**: Not Collected / Collected)
+- A job is **complete** once it is sent by post (or collected)
+- Top cards show active, overdue, completed and waiting-deposit jobs, plus how many jobs are at each step
+- Jobs are sorted by expected delivery date, with **Due in X days** / **Overdue** badges
+
 ## Expenses & Profit/Loss (Expenses tab)
 
 - Enter every expense: date, category, type, amount and notes
@@ -55,7 +73,7 @@ If several staff use their own phones, the data will **not** be shared. Use Opti
 
 All sales go to the **Sales** sheet in that Google Sheet (one row per key in, with pcs columns
 by category and printing), so the owner can check them directly in Google Sheet. Expenses go to
-the **Expenses** sheet, and the target is kept in the **Settings** sheet.
+the **Expenses** sheet, job progress to the **Jobs** sheet, and the target is kept in the **Settings** sheet.
 
 > Anyone with the `/exec` URL can add or delete records. Don't share the URL outside your staff.
 

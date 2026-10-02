@@ -12,6 +12,7 @@
     <nav>
       <button data-tab="dashboard" class="active">Dashboard</button>
       <button data-tab="input">Key In</button>
+      <button data-tab="jobs">Jobs</button>
       <button data-tab="history">History</button>
       <button data-tab="settings">Settings</button>
       <button data-tab="expenses">Expenses</button>
@@ -124,6 +125,25 @@
           <button type="button" class="remove" title="Remove">✕</button>
         </div>
       </template>
+    </section>
+
+    <!-- JOB STATUS -->
+    <section id="tab-jobs" class="tab">
+      <div class="cards" id="job-summary"></div>
+      <div class="chips" id="job-stages"></div>
+      <div class="row">
+        <label>Show
+          <select id="job-filter">
+            <option value="active">Active jobs</option>
+            <option value="waiting">Waiting deposit</option>
+            <option value="complete">Completed</option>
+            <option value="all">All</option>
+          </select>
+        </label>
+        <label>Search <input type="search" id="job-search" placeholder="Customer name or phone"></label>
+      </div>
+      <p class="muted">An order becomes a job once the customer pays a deposit. Update each step as work moves on. A job is complete when it is sent by post or collected.</p>
+      <div id="job-list"></div>
     </section>
 
     <!-- HISTORY -->

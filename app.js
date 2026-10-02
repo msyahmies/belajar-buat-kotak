@@ -30,6 +30,7 @@ function normalizeExpenses(list) {
 const LS_ENTRIES = 'sales.entries';
 const LS_SETTINGS = 'sales.settings';
 const LS_EXPENSES = 'sales.expenses';
+const LS_JOBS = 'sales.jobs';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -54,6 +55,7 @@ function save(key, value) {
 let entries = normalizeEntries(load(LS_ENTRIES, []));
 let settings = load(LS_SETTINGS, { target: 0, syncUrl: '' });
 let expenses = normalizeExpenses(load(LS_EXPENSES, []));
+let jobs = load(LS_JOBS, {});
 
 // ---------- Sync (Google Apps Script) ----------
 
@@ -83,6 +85,7 @@ async function pull() {
     entries = normalizeEntries(data.entries);
     expenses = normalizeExpenses(data.expenses || []);
     save(LS_EXPENSES, expenses);
+    if (data.jobs) { jobs = data.jobs; save(LS_JOBS, jobs); }
     if (data.target != null) settings.target = Number(data.target) || 0;
     save(LS_ENTRIES, entries);
     save(LS_SETTINGS, settings);
@@ -106,7 +109,7 @@ function summarize(list) {
   for (const e of list) {
     out.leads += Number(e.leads) || 0;
     out.converted += Number(e.converted) || 0;
-    for (const l of e.lines) {
+    e.lines.forEach((l, i) => {
       const qty = Number(l.qty) || 0, amt = Number(l.amount) || 0;
       out.pcs += qty;
       out.sales += amt;
@@ -116,12 +119,12 @@ function summarize(list) {
       (out.byPrinting[l.printing] ??= { pcs: 0, sales: 0 });
       out.byPrinting[l.printing].pcs += qty;
       out.byPrinting[l.printing].sales += amt;
-      out.deposit += Number(l.deposit) || 0;
+      out.deposit += lineDeposit(e, i);
       const src = l.source || 'None';
       (out.bySource[src] ??= { orders: 0, sales: 0 });
       out.bySource[src].orders += 1;
       out.bySource[src].sales += amt;
-    }
+    });
   }
   return out;
 }
@@ -273,6 +276,9 @@ async function onSubmitEntry(ev) {
     msg.textContent = `Saved: ${rm(entryTotals(entry).sales)} for ${entry.date}`;
     resetForm({ date: entry.date });
     renderAll();
+    $('#job-filter').value = entry.lines.some(l => l.deposit > 0) ? 'active' : 'waiting';
+    renderJobs();
+    showTab('jobs');
   } catch (e) {
     msg.className = 'msg err';
     msg.textContent = 'Save failed: ' + e.message;
@@ -290,11 +296,11 @@ function monthEntries() {
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
 }
 
-function lineDetail(l) {
+function lineDetail(l, deposit) {
   const parts = [
     `${l.customer ? `<b>${esc(l.customer)}</b>` : ''}${l.phone ? ` (${esc(l.phone)})` : ''}`,
     `${l.qty} × ${esc(l.category)} (${esc(l.printing)})`,
-    `Total ${rm(l.amount)} · Deposit ${rm(l.deposit)} · Balance ${rm((Number(l.amount) || 0) - (Number(l.deposit) || 0))}`,
+    `Total ${rm(l.amount)} · Deposit ${rm(deposit)} · Balance ${rm((Number(l.amount) || 0) - deposit)}`,
   ];
   if (l.source) parts.push(`Source: ${esc(l.source)}`);
   if (l.delivery) parts.push(`Delivery: ${esc(l.delivery)}`);
@@ -311,7 +317,7 @@ function renderHistory() {
   }
   tbody.innerHTML = list.map(e => {
     const t = entryTotals(e);
-    const detail = e.lines.map(lineDetail).join('<hr>');
+    const detail = e.lines.map((l, i) => lineDetail(l, lineDeposit(e, i))).join('<hr>');
     return `<tr>
       <td>${e.date}</td><td class="num">${e.leads || 0}</td><td class="num">${e.converted || 0}</td><td class="num">${convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 })}</td>
       <td class="num">${t.pcs}</td><td class="num">${rm(t.sales)}</td>
@@ -339,7 +345,7 @@ function exportCsv() {
   const rows = [header];
   // Phone is written as ="012..." so Excel keeps the leading 0.
   for (const e of monthEntries().reverse()) {
-    e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, i === 0 ? convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 }) : '', l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, l.deposit || 0, (Number(l.amount) || 0) - (Number(l.deposit) || 0), l.source || '', l.delivery || '', l.notes || '']));
+    e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, i === 0 ? convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 }) : '', l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, lineDeposit(e, i), (Number(l.amount) || 0) - lineDeposit(e, i), l.source || '', l.delivery || '', l.notes || '']));
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const a = document.createElement('a');
@@ -451,6 +457,146 @@ async function onDeleteExpense(id) {
   }
 }
 
+// ---------- Job Status ----------
+
+// Every order row with a deposit becomes a job. Job progress is stored by key "<entry id>:<row index>".
+const JOB_STAGES = [
+  { key: 'design', label: 'Design', options: ['Done', 'Needs Revision', 'Waiting Decision'], done: ['Done'] },
+  { key: 'order', label: 'Shirt Order', options: ['Ordered', 'Not Ordered'], done: ['Ordered'] },
+  { key: 'shirt', label: 'Shirt Status', options: ['Need to Order', 'Not Picked Up', 'Picked Up'], done: ['Picked Up'] },
+  { key: 'print', label: 'Print DTF', options: ['Sent', 'Arrived'], done: ['Arrived'] },
+  { key: 'heatpress', label: 'Heat Press', options: ['Not Started', 'In Progress', 'Done'], done: ['Done'] },
+  { key: 'packing', label: 'Packing', options: ['Not Yet', 'Done'], done: ['Done'] },
+  { key: 'method', label: 'Post / Pickup', options: ['Post', 'Pickup'], done: ['Post', 'Pickup'] },
+  { key: 'ship', label: 'Post Status', options: ['Not Sent', 'Sent'], done: ['Sent'] },
+];
+// The last stage depends on whether the order is posted or picked up.
+const PICKUP_STAGE = { key: 'ship', label: 'Pickup Status', options: ['Not Collected', 'Collected'], done: ['Collected'] };
+
+function stagesFor(job) {
+  const stages = JOB_STAGES.map(s => s.key === 'print' && job.printing === 'Sublimation' ? { ...s, label: 'Print Sublimation' } : s);
+  if (job.method === 'Pickup') stages[stages.length - 1] = PICKUP_STAGE;
+  return stages;
+}
+
+const jobKey = (entry, i) => `${entry.id}:${i}`;
+const lineDeposit = (entry, i) => Number(entry.lines[i].deposit) || Number(jobs[jobKey(entry, i)]?.deposit) || 0;
+
+// All order rows, joined with their saved job progress.
+function allJobs() {
+  const out = [];
+  for (const e of entries) {
+    e.lines.forEach((l, i) => {
+      const key = jobKey(e, i);
+      const job = { ...l, ...(jobs[key] || {}), key, date: e.date, deposit: lineDeposit(e, i) };
+      job.stages = stagesFor(job);
+      job.doneCount = job.stages.filter(s => s.done.includes(job[s.key])).length;
+      job.current = job.stages.find(s => !s.done.includes(job[s.key]));
+      job.complete = !job.current;
+      out.push(job);
+    });
+  }
+  return out;
+}
+
+function dueLabel(job) {
+  if (!job.delivery || job.complete) return '';
+  const days = Math.round((new Date(job.delivery) - new Date(todayStr())) / 86400000);
+  if (days < 0) return `<span class="badge red">Overdue ${-days} day${days === -1 ? '' : 's'}</span>`;
+  if (days === 0) return '<span class="badge yellow">Due today</span>';
+  return `<span class="badge${days <= 2 ? ' yellow' : ''}">Due in ${days} day${days === 1 ? '' : 's'}</span>`;
+}
+
+function jobCard(job) {
+  const pct = Math.round(job.doneCount / job.stages.length * 100);
+  const balance = (Number(job.amount) || 0) - job.deposit;
+  const selects = job.stages.map(s => `
+    <label class="${s.done.includes(job[s.key]) ? 'stage-done' : job.current === s ? 'stage-now' : ''}">${s.label}
+      <select data-job="${esc(job.key)}" data-stage="${s.key}">
+        <option value="">—</option>
+        ${s.options.map(o => `<option${job[s.key] === o ? ' selected' : ''}>${o}</option>`).join('')}
+      </select>
+    </label>`).join('');
+  return `<div class="job${job.complete ? ' complete' : ''}">
+    <div class="job-head">
+      <div>
+        <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}` : ''}
+        <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ordered ${esc(job.date)}${job.delivery ? ` · delivery ${esc(job.delivery)}` : ''}</div>
+        <div class="muted">Total ${rm(job.amount)} · Deposit ${rm(job.deposit)} · Balance ${rm(balance)}</div>
+        ${job.notes ? `<div class="muted">Notes: ${esc(job.notes)}</div>` : ''}
+      </div>
+      <div class="job-status">
+        ${job.complete ? '<span class="badge green">Completed</span>' : `<span class="badge navy">${job.current.label}</span>`}
+        ${dueLabel(job)}
+      </div>
+    </div>
+    <div class="progress"><div style="width:${pct}%" class="${job.complete ? 'done' : ''}"></div></div>
+    <div class="stages">${selects}</div>
+  </div>`;
+}
+
+function waitingCard(job) {
+  return `<div class="job waiting">
+    <div class="job-head">
+      <div>
+        <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}` : ''}
+        <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ${rm(job.amount)} · ordered ${esc(job.date)}</div>
+      </div>
+      <form class="deposit-form" data-job="${esc(job.key)}">
+        <input type="number" name="deposit" min="0.01" step="0.01" placeholder="Deposit (RM)" required>
+        <button type="submit">Deposit Paid</button>
+      </form>
+    </div>
+  </div>`;
+}
+
+function renderJobs() {
+  const filter = $('#job-filter').value;
+  const q = $('#job-search').value.trim().toLowerCase();
+  const list = allJobs();
+  const started = list.filter(j => j.deposit > 0);
+  const active = started.filter(j => !j.complete);
+
+  // Counts per current stage, for the summary chips.
+  const counts = {};
+  active.forEach(j => counts[j.current.label] = (counts[j.current.label] || 0) + 1);
+  $('#job-summary').innerHTML = [
+    `<div class="card"><span>Active Jobs</span><strong>${active.length}</strong></div>`,
+    `<div class="card c-red"><span>Overdue</span><strong>${active.filter(j => j.delivery && j.delivery < todayStr()).length}</strong></div>`,
+    `<div class="card c-green"><span>Completed</span><strong>${started.length - active.length}</strong></div>`,
+    `<div class="card c-yellow"><span>Waiting Deposit</span><strong>${list.length - started.length}</strong></div>`,
+  ].join('');
+  $('#job-stages').innerHTML = Object.entries(counts).map(([k, v]) => `<span class="chip">${esc(k)}: <b>${v}</b></span>`).join('');
+
+  const match = j => !q || `${j.customer} ${j.phone}`.toLowerCase().includes(q);
+  let shown;
+  if (filter === 'waiting') shown = list.filter(j => j.deposit <= 0);
+  else if (filter === 'complete') shown = started.filter(j => j.complete);
+  else if (filter === 'all') shown = list;
+  else shown = active;
+  shown = shown.filter(match).sort((a, b) =>
+    (a.delivery || '9999').localeCompare(b.delivery || '9999') || a.date.localeCompare(b.date));
+
+  $('#job-list').innerHTML = shown.length
+    ? shown.map(j => j.deposit > 0 ? jobCard(j) : waitingCard(j)).join('')
+    : '<p class="muted">No jobs here.</p>';
+}
+
+async function saveJob(key, changes) {
+  jobs[key] = { ...(jobs[key] || {}), ...changes, updatedAt: new Date().toISOString() };
+  save(LS_JOBS, jobs);
+  renderJobs();
+  renderDashboard();
+  if (!settings.syncUrl) return;
+  const full = allJobs().find(j => j.key === key);
+  try {
+    await remote({ action: 'saveJob', job: { ...jobs[key], id: key, customer: full.customer, phone: full.phone, category: full.category,
+      printing: full.printing, qty: full.qty, delivery: full.delivery, status: full.complete ? 'Completed' : full.current.label } });
+  } catch (e) {
+    alert('Saved on this device, but failed to send to the server: ' + e.message);
+  }
+}
+
 // ---------- Settings ----------
 
 async function onSubmitSettings(ev) {
@@ -478,6 +624,7 @@ function renderAll() {
   renderDashboard();
   renderHistory();
   renderExpenses();
+  renderJobs();
   const f = $('#settings-form');
   f.target.value = settings.target || '';
   f.syncUrl.value = settings.syncUrl || '';
@@ -486,7 +633,7 @@ function renderAll() {
 function showTab(name) {
   $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $$('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
-  if ((name === 'dashboard' || name === 'expenses') && settings.syncUrl) pull();
+  if (['dashboard', 'expenses', 'jobs'].includes(name) && settings.syncUrl) pull();
 }
 
 $$('nav button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -514,6 +661,17 @@ $('#expense-form').addEventListener('submit', onSubmitExpense);
 $('#t-expenses').addEventListener('click', ev => {
   const id = ev.target.dataset?.delExp;
   if (id) onDeleteExpense(id);
+});
+$('#job-filter').addEventListener('change', renderJobs);
+$('#job-search').addEventListener('input', renderJobs);
+$('#job-list').addEventListener('change', ev => {
+  const { job, stage } = ev.target.dataset;
+  if (job && stage) saveJob(job, { [stage]: ev.target.value });
+});
+$('#job-list').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const form = ev.target;
+  saveJob(form.dataset.job, { deposit: Number(form.deposit.value) || 0 });
 });
 $('#t-history').addEventListener('click', ev => {
   const id = ev.target.dataset?.del;

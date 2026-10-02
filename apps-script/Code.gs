@@ -7,6 +7,10 @@
 const SHEET_ENTRIES = 'Sales';
 const SHEET_SETTINGS = 'Settings';
 const SHEET_EXPENSES = 'Expenses';
+const SHEET_JOBS = 'Jobs';
+const JOB_FIELDS = ['design', 'order', 'shirt', 'print', 'heatpress', 'packing', 'method', 'ship'];
+const JOB_HEADER = ['Job ID', 'Customer', 'Phone', 'Category', 'Printing', 'Qty', 'Expected Delivery', 'Deposit (RM)',
+  'Design', 'Shirt Order', 'Shirt Status', 'Print', 'Heat Press', 'Packing', 'Post / Pickup', 'Post / Pickup Status', 'Current Status', 'Updated At'];
 const EXPENSE_HEADER = ['ID', 'Date', 'Type', 'Category', 'Amount (RM)', 'Notes', 'Entered At'];
 const CATEGORIES = ['Work Shirt', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
 const PRINTINGS = ['DTF', 'Sublimation'];
@@ -22,11 +26,12 @@ function doPost(e) {
   try {
     const req = JSON.parse(e.postData.contents);
     switch (req.action) {
-      case 'list': return json({ ok: true, entries: listEntries(), expenses: listExpenses(), target: getTarget() });
+      case 'list': return json({ ok: true, entries: listEntries(), expenses: listExpenses(), jobs: listJobs(), target: getTarget() });
       case 'add': addEntry(req.entry); return json({ ok: true });
       case 'delete': deleteEntry(req.id); return json({ ok: true });
       case 'addExpense': addExpense(req.expense); return json({ ok: true });
       case 'deleteExpense': deleteRowById(SHEET_EXPENSES, req.id); return json({ ok: true });
+      case 'saveJob': saveJob(req.job); return json({ ok: true });
       case 'setTarget': setTarget(req.target); return json({ ok: true });
       default: return json({ ok: false, error: 'Invalid action' });
     }
@@ -46,10 +51,11 @@ function sheet(name) {
   let sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
-    if (name === SHEET_ENTRIES || name === SHEET_EXPENSES) {
-      sh.appendRow(name === SHEET_ENTRIES ? HEADER : EXPENSE_HEADER);
+    if (name === SHEET_ENTRIES || name === SHEET_EXPENSES || name === SHEET_JOBS) {
+      sh.appendRow(name === SHEET_ENTRIES ? HEADER : name === SHEET_EXPENSES ? EXPENSE_HEADER : JOB_HEADER);
       sh.setFrozenRows(1);
       sh.getRange('B:B').setNumberFormat('@'); // keep dates as yyyy-mm-dd text
+      if (name === SHEET_JOBS) sh.getRange('C:C').setNumberFormat('@'); // keep the phone's leading 0
     } else {
       sh.appendRow(['Monthly Target (RM)', 0]);
     }
@@ -105,6 +111,29 @@ function listExpenses() {
 function addExpense(x) {
   if (!x || !x.id || !x.date) throw new Error('Incomplete data');
   sheet(SHEET_EXPENSES).appendRow([x.id, x.date, x.kind === 'bulanan' ? 'Monthly' : 'Daily', x.category, Number(x.amount) || 0, x.notes || '', x.createdAt]);
+}
+
+// Jobs are keyed "<sale id>:<row index>"; returns { key: { deposit, design, ... } }.
+function listJobs() {
+  const out = {};
+  sheet(SHEET_JOBS).getDataRange().getValues().slice(1).filter(r => r[0]).forEach(r => {
+    const job = { deposit: Number(r[7]) || 0, updatedAt: String(r[17]) };
+    JOB_FIELDS.forEach((f, i) => { if (r[8 + i] !== '') job[f] = String(r[8 + i]); });
+    out[String(r[0])] = job;
+  });
+  return out;
+}
+
+function saveJob(job) {
+  if (!job || !job.id) throw new Error('Incomplete data');
+  const row = [job.id, job.customer || '', job.phone || '', job.category || '', job.printing || '', Number(job.qty) || 0,
+    job.delivery || '', Number(job.deposit) || 0].concat(JOB_FIELDS.map(f => job[f] || '')).concat([job.status || '', job.updatedAt || '']);
+  const sh = sheet(SHEET_JOBS);
+  const ids = sh.getRange(1, 1, sh.getLastRow(), 1).getValues();
+  for (let i = 1; i < ids.length; i++) {
+    if (String(ids[i][0]) === String(job.id)) { sh.getRange(i + 1, 1, 1, row.length).setValues([row]); return; }
+  }
+  sh.appendRow(row);
 }
 
 function deleteEntry(id) {
