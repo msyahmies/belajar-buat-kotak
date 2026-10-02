@@ -148,7 +148,8 @@ button.danger { background: none; border-color: var(--danger); color: var(--dang
   .cards.key { grid-template-columns: 1fr; }
   .card strong { font-size: 1.15rem; }
   .cards.key strong { font-size: 1.5rem; }
-  nav button { flex: 1; padding: 8px 4px; font-size: 0.9rem; }
+  nav { gap: 0; }
+  nav button { flex: 1 1 auto; padding: 8px 2px; font-size: 0.8rem; }
   .line { grid-template-columns: 1fr 1fr; }
 }
 
@@ -158,3 +159,4 @@ button.danger { background: none; border-color: var(--danger); color: var(--dang
 .msg.err { color: var(--danger); }
 
 #settings-form { max-width: 520px; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 14px 4px; }

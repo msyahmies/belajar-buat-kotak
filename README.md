@@ -27,6 +27,14 @@ Setiap kali staff key in:
 - Pecahan ikut kategori baju, jenis printing dan lead source
 - Tab **Sejarah**: senarai rekod sebulan, padam rekod yang salah, muat turun CSV (boleh buka dalam Excel)
 
+## Belanja & Untung Rugi (tab Belanja)
+
+- Masukkan setiap belanja: tarikh, jenis, kategori (sewa, gaji, bil, bahan, ink, iklan dll), jumlah dan nota
+- **Jenis Harian**: kos hari itu sahaja (cth: beli bahan, pos)
+- **Jenis Bulanan / overhead**: kos tetap bulanan (cth: sewa, gaji, bil). Untuk untung harian, kos ini dibahagi sama rata setiap hari dalam bulan itu
+- **Untung/Rugi bulan** = sales bulan − semua belanja bulan (hijau = untung, merah = rugi)
+- **Untung/Rugi hari** = sales hari − belanja harian hari itu − (overhead bulan ÷ bilangan hari)
+
 ## Cara guna
 
 ### Pilihan 1: Satu peranti sahaja (paling senang)

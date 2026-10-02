@@ -6,6 +6,8 @@
 
 const SHEET_ENTRIES = 'Rekod';
 const SHEET_SETTINGS = 'Tetapan';
+const SHEET_EXPENSES = 'Belanja';
+const EXPENSE_HEADER = ['ID', 'Tarikh', 'Jenis', 'Kategori', 'Jumlah (RM)', 'Nota', 'Masa Key In'];
 const CATEGORIES = ['Baju Pekerja', 'Baju Family Day', 'Baju Sukan', 'Baju Birthday'];
 const PRINTINGS = ['DTF', 'Sublimation'];
 
@@ -20,9 +22,11 @@ function doPost(e) {
   try {
     const req = JSON.parse(e.postData.contents);
     switch (req.action) {
-      case 'list': return json({ ok: true, entries: listEntries(), target: getTarget() });
+      case 'list': return json({ ok: true, entries: listEntries(), expenses: listExpenses(), target: getTarget() });
       case 'add': addEntry(req.entry); return json({ ok: true });
       case 'delete': deleteEntry(req.id); return json({ ok: true });
+      case 'addExpense': addExpense(req.expense); return json({ ok: true });
+      case 'deleteExpense': deleteRowById(SHEET_EXPENSES, req.id); return json({ ok: true });
       case 'setTarget': setTarget(req.target); return json({ ok: true });
       default: return json({ ok: false, error: 'Tindakan tidak sah' });
     }
@@ -42,8 +46,8 @@ function sheet(name) {
   let sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
-    if (name === SHEET_ENTRIES) {
-      sh.appendRow(HEADER);
+    if (name === SHEET_ENTRIES || name === SHEET_EXPENSES) {
+      sh.appendRow(name === SHEET_ENTRIES ? HEADER : EXPENSE_HEADER);
       sh.setFrozenRows(1);
       sh.getRange('B:B').setNumberFormat('@'); // simpan tarikh sebagai teks yyyy-mm-dd
     } else {
@@ -86,8 +90,29 @@ function addEntry(entry) {
   );
 }
 
+function listExpenses() {
+  return sheet(SHEET_EXPENSES).getDataRange().getValues().slice(1).filter(r => r[0]).map(r => ({
+    id: String(r[0]),
+    date: String(r[1]),
+    kind: String(r[2]) === 'Bulanan' ? 'bulanan' : 'harian',
+    category: String(r[3]),
+    amount: Number(r[4]) || 0,
+    notes: String(r[5]),
+    createdAt: String(r[6]),
+  }));
+}
+
+function addExpense(x) {
+  if (!x || !x.id || !x.date) throw new Error('Data tidak lengkap');
+  sheet(SHEET_EXPENSES).appendRow([x.id, x.date, x.kind === 'bulanan' ? 'Bulanan' : 'Harian', x.category, Number(x.amount) || 0, x.notes || '', x.createdAt]);
+}
+
 function deleteEntry(id) {
-  const sh = sheet(SHEET_ENTRIES);
+  deleteRowById(SHEET_ENTRIES, id);
+}
+
+function deleteRowById(name, id) {
+  const sh = sheet(name);
   const ids = sh.getRange(1, 1, sh.getLastRow(), 1).getValues();
   for (let i = ids.length - 1; i >= 1; i--) {
     if (String(ids[i][0]) === String(id)) { sh.deleteRow(i + 1); return; }

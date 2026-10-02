@@ -3,16 +3,20 @@
 
 const CATEGORIES = ['Baju Pekerja', 'Baju Family Day', 'Baju Sukan', 'Baju Birthday'];
 const PRINTINGS = ['DTF', 'Sublimation'];
+const EXPENSE_CATEGORIES = ['Sewa Kedai', 'Gaji Staff', 'Bil Elektrik & Air', 'Internet & Telefon', 'Baju Kosong / Bahan', 'Ink & Film', 'Iklan / Ads', 'Penghantaran / Pos', 'Penyelenggaraan Mesin', 'Lain-lain'];
 const SOURCES = ['WhatsApp', 'Facebook', 'Instagram', 'TikTok', 'Walk-in', 'Referral', 'Customer Lama', 'Lain-lain'];
 
 const LS_ENTRIES = 'sales.entries';
 const LS_SETTINGS = 'sales.settings';
+const LS_EXPENSES = 'sales.expenses';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const rm = n => 'RM ' + (Number(n) || 0).toLocaleString('ms-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const newId = () => crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
 
 function todayStr() {
   const d = new Date();
@@ -28,6 +32,7 @@ function save(key, value) {
 
 let entries = load(LS_ENTRIES, []);
 let settings = load(LS_SETTINGS, { target: 0, syncUrl: '' });
+let expenses = load(LS_EXPENSES, []);
 
 // ---------- Sync (Google Apps Script) ----------
 
@@ -55,6 +60,8 @@ async function pull() {
   try {
     const data = await remote({ action: 'list' });
     entries = data.entries;
+    expenses = data.expenses || [];
+    save(LS_EXPENSES, expenses);
     if (data.target != null) settings.target = Number(data.target) || 0;
     save(LS_ENTRIES, entries);
     save(LS_SETTINGS, settings);
@@ -227,7 +234,7 @@ async function onSubmitEntry(ev) {
   const f = ev.target;
   const msg = $('#form-msg');
   const entry = {
-    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2),
+    id: newId(),
     date: f.date.value,
     leads: Number(f.leads.value) || 0,
     converted: Number(f.converted.value) || 0,
@@ -321,6 +328,107 @@ function exportCsv() {
   URL.revokeObjectURL(a.href);
 }
 
+// ---------- Belanja / Untung Rugi ----------
+
+const sumAmount = list => list.reduce((t, x) => t + (Number(x.amount) || 0), 0);
+
+function setProfitCard(card, value) {
+  card.classList.toggle('c-green', value >= 0);
+  card.classList.toggle('c-red', value < 0);
+}
+
+function renderExpenses() {
+  const date = $('#exp-date').value || todayStr();
+  const month = date.slice(0, 7);
+  const [y, m] = date.split('-').map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const monthName = new Date(y, m - 1, 1).toLocaleDateString('ms-MY', { month: 'long', year: 'numeric' });
+
+  const monExp = expenses.filter(x => x.date.startsWith(month));
+  const monSales = summarize(entries.filter(e => e.date.startsWith(month))).sales;
+  const monCost = sumAmount(monExp);
+  const monProfit = monSales - monCost;
+
+  $('#p-month-label').textContent = `${monProfit >= 0 ? 'Untung' : 'Rugi'} Bulan ${monthName}`;
+  $('#p-month').textContent = rm(Math.abs(monProfit));
+  $('#p-month-sub').textContent = `Sales ${rm(monSales)} − Belanja ${rm(monCost)}`
+    + (monSales ? ` · margin ${(monProfit / monSales * 100).toFixed(1)}%` : '');
+  setProfitCard($('#p-month-card'), monProfit);
+  $('#p-sales').textContent = rm(monSales);
+  $('#p-cost').textContent = rm(monCost);
+
+  // Untung harian: sales hari itu − belanja harian hari itu − bahagian sehari kos bulanan.
+  const daySales = summarize(entries.filter(e => e.date === date)).sales;
+  const dayCost = sumAmount(monExp.filter(x => x.kind !== 'bulanan' && x.date === date));
+  const overheadPerDay = sumAmount(monExp.filter(x => x.kind === 'bulanan')) / daysInMonth;
+  const dayProfit = daySales - dayCost - overheadPerDay;
+  $('#p-day-label').textContent = `${dayProfit >= 0 ? 'Untung' : 'Rugi'} Hari Ini`;
+  $('#p-day').textContent = rm(Math.abs(dayProfit));
+  $('#p-day-sub').textContent = `Sales ${rm(daySales)} − belanja ${rm(dayCost)} − overhead ${rm(overheadPerDay)}/hari`;
+  setProfitCard($('#p-day-card'), dayProfit);
+
+  const byCat = {};
+  monExp.forEach(x => byCat[x.category] = (byCat[x.category] || 0) + (Number(x.amount) || 0));
+  const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  $('#t-exp-cat tbody').innerHTML = cats.length
+    ? cats.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${rm(v)}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="muted">Tiada belanja lagi.</td></tr>';
+
+  const list = [...monExp].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+  $('#t-expenses tbody').innerHTML = list.length
+    ? list.map(x => `<tr>
+        <td>${esc(x.date)}</td><td>${x.kind === 'bulanan' ? 'Bulanan' : 'Harian'}</td><td>${esc(x.category)}</td>
+        <td class="num">${rm(x.amount)}</td><td class="muted">${esc(x.notes || '')}</td>
+        <td><button class="danger" data-del-exp="${esc(x.id)}">Padam</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" class="muted">Tiada belanja untuk bulan ini.</td></tr>';
+}
+
+async function onSubmitExpense(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const msg = $('#expense-msg');
+  const expense = {
+    id: newId(),
+    date: f.date.value,
+    kind: f.kind.value,
+    category: f.category.value,
+    amount: Number(f.amount.value) || 0,
+    notes: f.notes.value.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  const btn = $('button[type=submit]', f);
+  btn.disabled = true;
+  try {
+    if (settings.syncUrl) await remote({ action: 'addExpense', expense });
+    expenses.push(expense);
+    save(LS_EXPENSES, expenses);
+    msg.className = 'msg ok';
+    msg.textContent = `Disimpan: ${expense.category} ${rm(expense.amount)}`;
+    f.amount.value = '';
+    f.notes.value = '';
+    renderExpenses();
+  } catch (e) {
+    msg.className = 'msg err';
+    msg.textContent = 'Gagal simpan: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function onDeleteExpense(id) {
+  const x = expenses.find(e => e.id === id);
+  if (!x || !confirm(`Padam belanja ${x.category} ${rm(x.amount)} (${x.date})?`)) return;
+  try {
+    if (settings.syncUrl) await remote({ action: 'deleteExpense', id });
+    expenses = expenses.filter(e => e.id !== id);
+    save(LS_EXPENSES, expenses);
+    renderExpenses();
+  } catch (err) {
+    alert('Gagal padam: ' + err.message);
+  }
+}
+
 // ---------- Tetapan ----------
 
 async function onSubmitSettings(ev) {
@@ -347,6 +455,7 @@ async function onSubmitSettings(ev) {
 function renderAll() {
   renderDashboard();
   renderHistory();
+  renderExpenses();
   const f = $('#settings-form');
   f.target.value = settings.target || '';
   f.syncUrl.value = settings.syncUrl || '';
@@ -355,7 +464,7 @@ function renderAll() {
 function showTab(name) {
   $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $$('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
-  if (name === 'dashboard' && settings.syncUrl) pull();
+  if ((name === 'dashboard' || name === 'expenses') && settings.syncUrl) pull();
 }
 
 $$('nav button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -370,6 +479,15 @@ $('#entry-form').converted.addEventListener('input', updateConvRate);
 $('#entry-form').addEventListener('submit', onSubmitEntry);
 $('#settings-form').addEventListener('submit', onSubmitSettings);
 $('#export-csv').addEventListener('click', exportCsv);
+$('#exp-date').value = todayStr();
+$('#exp-date').addEventListener('change', renderExpenses);
+$('#expense-form').date.value = todayStr();
+$('#expense-form').category.innerHTML = EXPENSE_CATEGORIES.map(c => `<option>${c}</option>`).join('');
+$('#expense-form').addEventListener('submit', onSubmitExpense);
+$('#t-expenses').addEventListener('click', ev => {
+  const id = ev.target.dataset?.delExp;
+  if (id) onDeleteExpense(id);
+});
 $('#t-history').addEventListener('click', ev => {
   const id = ev.target.dataset?.del;
   if (id) onDelete(id);

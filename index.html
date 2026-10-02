@@ -14,6 +14,7 @@
       <button data-tab="input">Key In</button>
       <button data-tab="history">Sejarah</button>
       <button data-tab="settings">Tetapan</button>
+      <button data-tab="expenses">Belanja</button>
     </nav>
   </header>
 
@@ -150,6 +151,59 @@
         <button type="submit">Simpan Tetapan</button>
         <p id="settings-msg" class="msg"></p>
       </form>
+    </section>
+
+    <!-- EXPENSES -->
+    <section id="tab-expenses" class="tab">
+      <div class="row">
+        <label>Tarikh <input type="date" id="exp-date"></label>
+      </div>
+
+      <div class="card hero" id="p-month-card">
+        <span id="p-month-label">Untung / Rugi Bulan Ini</span>
+        <strong id="p-month">RM 0.00</strong>
+        <small id="p-month-sub"></small>
+      </div>
+
+      <div class="cards key">
+        <div class="card"><span>Sales Bulan Ini</span><strong id="p-sales">RM 0.00</strong></div>
+        <div class="card"><span>Belanja Bulan Ini</span><strong id="p-cost">RM 0.00</strong></div>
+        <div class="card" id="p-day-card"><span id="p-day-label">Untung / Rugi Hari Ini</span><strong id="p-day">RM 0.00</strong><small id="p-day-sub"></small></div>
+      </div>
+
+      <h2>Tambah Belanja</h2>
+      <form id="expense-form" class="panel">
+        <div class="grid">
+          <label>Tarikh <input type="date" name="date" required></label>
+          <label>Jenis
+            <select name="kind">
+              <option value="harian">Harian (bahan, pos)</option>
+              <option value="bulanan">Bulanan (sewa, gaji, bil)</option>
+            </select>
+          </label>
+          <label>Kategori <select name="category" required></select></label>
+          <label>Jumlah (RM) <input type="number" name="amount" min="0.01" step="0.01" required></label>
+        </div>
+        <label>Nota <input type="text" name="notes" placeholder="cth: sewa bulan Oktober"></label>
+        <p class="muted">Kos <b>bulanan</b> dibahagi sama rata setiap hari dalam bulan itu semasa kira untung harian, supaya hari bayar sewa tak nampak rugi besar.</p>
+        <button type="submit">Simpan Belanja</button>
+        <p id="expense-msg" class="msg"></p>
+      </form>
+
+      <div class="split">
+        <div>
+          <h2>Belanja Ikut Kategori (bulan ini)</h2>
+          <table id="t-exp-cat"><thead><tr><th>Kategori</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <h2>Senarai Belanja (bulan ini)</h2>
+      <div class="table-wrap">
+        <table id="t-expenses">
+          <thead><tr><th>Tarikh</th><th>Jenis</th><th>Kategori</th><th class="num">RM</th><th>Nota</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </section>
   </main>
 
