@@ -76,10 +76,11 @@ th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--bor
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 th { background: #fafbfc; font-weight: 600; }
 tbody tr:last-child td { border-bottom: none; }
+#t-history hr { border: none; border-top: 1px dashed var(--border); margin: 6px 0; }
 .table-wrap { overflow-x: auto; margin-top: 12px; }
 
 label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; }
-input, select {
+input, select, textarea {
   font: inherit;
   padding: 9px 10px;
   border: 1px solid var(--border);
@@ -88,6 +89,10 @@ input, select {
   color: var(--text);
   width: 100%;
 }
+input[readonly] { background: var(--bg); font-weight: 700; }
+input.neg { color: var(--danger); }
+.line .wide { grid-column: 1 / -1; }
+
 button {
   font: inherit;
   font-weight: 600;

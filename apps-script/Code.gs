@@ -9,7 +9,7 @@ const SHEET_SETTINGS = 'Tetapan';
 const CATEGORIES = ['Baju Pekerja', 'Baju Family Day', 'Baju Sukan', 'Baju Birthday'];
 const PRINTINGS = ['DTF', 'Sublimation'];
 
-const HEADER = ['ID', 'Tarikh', 'WS Masuk', 'Lead Masuk', 'Lead Convert', 'Jumlah Pcs', 'Jumlah (RM)']
+const HEADER = ['ID', 'Tarikh', 'WS Masuk', 'Lead Masuk', 'Lead Convert', 'Jumlah Pcs', 'Jumlah (RM)', 'Deposit (RM)', 'Baki (RM)']
   .concat(CATEGORIES.map(c => c + ' (pcs)'))
   .concat(PRINTINGS.map(p => p + ' (pcs)'))
   .concat(['Masa Key In', 'Butiran (JSON)']);
@@ -69,17 +69,18 @@ function listEntries() {
 
 function addEntry(entry) {
   if (!entry || !entry.id || !entry.date || !Array.isArray(entry.lines)) throw new Error('Data tidak lengkap');
-  let pcs = 0, sales = 0;
+  let pcs = 0, sales = 0, deposit = 0;
   const byCat = {}, byPrint = {};
   entry.lines.forEach(l => {
     const q = Number(l.qty) || 0;
     pcs += q;
     sales += Number(l.amount) || 0;
+    deposit += Number(l.deposit) || 0;
     byCat[l.category] = (byCat[l.category] || 0) + q;
     byPrint[l.printing] = (byPrint[l.printing] || 0) + q;
   });
   sheet(SHEET_ENTRIES).appendRow(
-    [entry.id, entry.date, Number(entry.ws) || 0, Number(entry.leads) || 0, Number(entry.converted) || 0, pcs, sales]
+    [entry.id, entry.date, Number(entry.ws) || 0, Number(entry.leads) || 0, Number(entry.converted) || 0, pcs, sales, deposit, sales - deposit]
       .concat(CATEGORIES.map(c => byCat[c] || 0))
       .concat(PRINTINGS.map(p => byPrint[p] || 0))
       .concat([entry.createdAt, JSON.stringify(entry.lines)])

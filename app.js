@@ -3,6 +3,7 @@
 
 const CATEGORIES = ['Baju Pekerja', 'Baju Family Day', 'Baju Sukan', 'Baju Birthday'];
 const PRINTINGS = ['DTF', 'Sublimation'];
+const SOURCES = ['WhatsApp', 'Facebook', 'Instagram', 'TikTok', 'Walk-in', 'Referral', 'Customer Lama', 'Lain-lain'];
 
 const LS_ENTRIES = 'sales.entries';
 const LS_SETTINGS = 'sales.settings';
@@ -71,7 +72,7 @@ function entryTotals(e) {
 }
 
 function summarize(list) {
-  const out = { sales: 0, pcs: 0, ws: 0, leads: 0, converted: 0, byCategory: {}, byPrinting: {} };
+  const out = { sales: 0, pcs: 0, ws: 0, leads: 0, converted: 0, deposit: 0, byCategory: {}, byPrinting: {}, bySource: {} };
   CATEGORIES.forEach(c => out.byCategory[c] = { pcs: 0, sales: 0 });
   PRINTINGS.forEach(p => out.byPrinting[p] = { pcs: 0, sales: 0 });
   for (const e of list) {
@@ -88,6 +89,11 @@ function summarize(list) {
       (out.byPrinting[l.printing] ??= { pcs: 0, sales: 0 });
       out.byPrinting[l.printing].pcs += qty;
       out.byPrinting[l.printing].sales += amt;
+      out.deposit += Number(l.deposit) || 0;
+      const src = l.source || 'Tiada';
+      (out.bySource[src] ??= { orders: 0, sales: 0 });
+      out.bySource[src].orders += 1;
+      out.bySource[src].sales += amt;
     }
   }
   return out;
@@ -123,6 +129,8 @@ function renderDashboard() {
   $('#m-leads').textContent = mon.leads;
   $('#m-conv').textContent = mon.converted;
   $('#m-rate').textContent = convRate(mon);
+  $('#m-deposit').textContent = rm(mon.deposit);
+  $('#m-owed').textContent = rm(mon.sales - mon.deposit);
   $('#m-balance').textContent = target ? (balance ? rm(balance) : 'Target tercapai!') : '-';
   $('#m-days').textContent = daysLeft;
   $('#m-perday').textContent = target ? rm(balance / daysLeft) : '-';
@@ -137,6 +145,10 @@ function renderDashboard() {
     `<tr><td>${esc(k)}</td><td class="num">${v.pcs}</td><td class="num">${rm(v.sales)}</td></tr>`).join('');
   $('#t-category tbody').innerHTML = rows(mon.byCategory);
   $('#t-printing tbody').innerHTML = rows(mon.byPrinting);
+  const sources = Object.entries(mon.bySource).sort((a, b) => b[1].sales - a[1].sales);
+  $('#t-source tbody').innerHTML = sources.length
+    ? sources.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v.orders}</td><td class="num">${rm(v.sales)}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="muted">Tiada order lagi.</td></tr>';
 }
 
 // ---------- Borang key in ----------
@@ -145,6 +157,7 @@ function addLine() {
   const node = $('#line-tpl').content.firstElementChild.cloneNode(true);
   $('[name=category]', node).innerHTML = CATEGORIES.map(c => `<option>${c}</option>`).join('');
   $('[name=printing]', node).innerHTML = PRINTINGS.map(p => `<option>${p}</option>`).join('');
+  $('[name=source]', node).innerHTML = SOURCES.map(s => `<option>${s}</option>`).join('');
   $('.remove', node).addEventListener('click', () => {
     if ($$('#lines .line').length > 1) node.remove();
     updateFormTotal();
@@ -160,6 +173,10 @@ function readLines() {
     printing: $('[name=printing]', n).value,
     qty: Number($('[name=qty]', n).value) || 0,
     amount: Number($('[name=amount]', n).value) || 0,
+    deposit: Number($('[name=deposit]', n).value) || 0,
+    source: $('[name=source]', n).value,
+    delivery: $('[name=delivery]', n).value,
+    notes: $('[name=notes]', n).value.trim(),
   }));
 }
 
@@ -167,6 +184,12 @@ function updateFormTotal() {
   const t = entryTotals({ lines: readLines() });
   $('#f-pcs').textContent = t.pcs;
   $('#f-sales').textContent = rm(t.sales);
+  for (const n of $$('#lines .line')) {
+    const bal = (Number($('[name=amount]', n).value) || 0) - (Number($('[name=deposit]', n).value) || 0);
+    const out = $('[name=balance]', n);
+    out.value = rm(bal);
+    out.classList.toggle('neg', bal < 0);
+  }
 }
 
 function resetForm(keep) {
@@ -219,6 +242,18 @@ function monthEntries() {
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
 }
 
+function lineDetail(l) {
+  const parts = [
+    `${l.customer ? `<b>${esc(l.customer)}</b>` : ''}${l.phone ? ` (${esc(l.phone)})` : ''}`,
+    `${l.qty} × ${esc(l.category)} (${esc(l.printing)})`,
+    `Total ${rm(l.amount)} · Deposit ${rm(l.deposit)} · Baki ${rm((Number(l.amount) || 0) - (Number(l.deposit) || 0))}`,
+  ];
+  if (l.source) parts.push(`Source: ${esc(l.source)}`);
+  if (l.delivery) parts.push(`Delivery: ${esc(l.delivery)}`);
+  if (l.notes) parts.push(`Notes: ${esc(l.notes)}`);
+  return parts.filter(Boolean).join('<br>');
+}
+
 function renderHistory() {
   const list = monthEntries();
   const tbody = $('#t-history tbody');
@@ -228,7 +263,7 @@ function renderHistory() {
   }
   tbody.innerHTML = list.map(e => {
     const t = entryTotals(e);
-    const detail = e.lines.map(l => `${l.customer ? `<b>${esc(l.customer)}</b>${l.phone ? ` (${esc(l.phone)})` : ''}: ` : ''}${l.qty} × ${esc(l.category)} (${esc(l.printing)}) ${rm(l.amount)}`).join('<br>');
+    const detail = e.lines.map(lineDetail).join('<hr>');
     return `<tr>
       <td>${e.date}</td><td class="num">${e.ws}</td><td class="num">${e.leads || 0}</td><td class="num">${e.converted || 0}</td>
       <td class="num">${t.pcs}</td><td class="num">${rm(t.sales)}</td>
@@ -252,11 +287,11 @@ async function onDelete(id) {
 }
 
 function exportCsv() {
-  const header = ['Tarikh', 'WS Masuk', 'Lead Masuk', 'Lead Convert', 'Nama Customer', 'No Telefon', 'Kategori', 'Printing', 'Kuantiti', 'Jumlah (RM)'];
+  const header = ['Tarikh', 'WS Masuk', 'Lead Masuk', 'Lead Convert', 'Nama Customer', 'No Telefon', 'Kategori', 'Printing', 'Kuantiti', 'Total (RM)', 'Deposit (RM)', 'Baki (RM)', 'Lead Source', 'Expected Delivery', 'Notes'];
   const rows = [header];
   // No telefon ditulis sebagai ="012..." supaya Excel tidak buang 0 di depan.
   for (const e of monthEntries().reverse()) {
-    e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.ws : 0, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount]));
+    e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.ws : 0, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, l.deposit || 0, (Number(l.amount) || 0) - (Number(l.deposit) || 0), l.source || '', l.delivery || '', l.notes || '']));
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const a = document.createElement('a');

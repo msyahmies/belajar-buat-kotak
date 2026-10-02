@@ -12,7 +12,11 @@ Setiap kali staff key in:
   - **Nama customer** dan **no telefon**
   - **Kategori**: Baju Pekerja / Baju Family Day / Baju Sukan / Baju Birthday
   - **Printing**: DTF / Sublimation
-  - **Kuantiti** (pcs) dan **jumlah (RM)**
+  - **Kuantiti** (pcs)
+  - **Lead source** (WhatsApp, Facebook, Instagram, TikTok, Walk-in, Referral, Customer Lama, Lain-lain)
+  - **Expected delivery** (tarikh siap/hantar)
+  - **Total (RM)**, **deposit**, dan **baki** (dikira automatik)
+  - **Notes**
 
 ## Apa yang dipaparkan (Dashboard)
 
@@ -20,7 +24,8 @@ Setiap kali staff key in:
 - Jumlah lead dan kadar convert untuk sebulan
 - Target bulanan, sales bulan ini, **baki sales yang perlu untuk capai target**,
   dan berapa perlu dijual sehari untuk baki hari dalam bulan itu
-- Pecahan ikut kategori baju dan jenis printing (pcs dan RM)
+- Deposit diterima dan baki belum bayar sebulan
+- Pecahan ikut kategori baju, jenis printing dan lead source
 - Tab **Sejarah**: senarai rekod sebulan, padam rekod yang salah, muat turun CSV (boleh buka dalam Excel)
 
 ## Cara guna
@@ -50,5 +55,5 @@ Paling mudah guna **GitHub Pages**: Settings > Pages > pilih branch, kemudian ko
 dengan staff. Mereka boleh "Add to Home Screen" supaya ia nampak macam app.
 
 ## Tukar kategori / jenis printing
-Edit senarai `CATEGORIES` dan `PRINTINGS` di bahagian atas `app.js` **dan** `apps-script/Code.gs`
+Edit senarai `CATEGORIES`, `PRINTINGS` dan `SOURCES` di bahagian atas `app.js` **dan** `apps-script/Code.gs`
 (kalau guna Google Sheet, deploy semula selepas edit).

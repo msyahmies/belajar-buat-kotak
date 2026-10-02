@@ -42,13 +42,17 @@
         <div class="card highlight"><span>Baki Perlu Dicapai</span><strong id="m-balance">RM 0.00</strong></div>
         <div class="card"><span>Perlu Sehari (<span id="m-days">0</span> hari lagi)</span><strong id="m-perday">RM 0.00</strong></div>
       </div>
-      <div class="cards" style="margin-top:12px">
-        <div class="card"><span>Lead Masuk Bulan Ini</span><strong id="m-leads">0</strong></div>
-        <div class="card"><span>Lead Convert Bulan Ini</span><strong id="m-conv">0</strong></div>
-        <div class="card"><span>Kadar Convert Bulan Ini</span><strong id="m-rate">-</strong></div>
-      </div>
       <div class="progress"><div id="m-bar"></div></div>
       <p class="muted" id="m-pct"></p>
+
+      <h2>Lead &amp; Bayaran (bulan ini)</h2>
+      <div class="cards">
+        <div class="card"><span>Lead Masuk</span><strong id="m-leads">0</strong></div>
+        <div class="card"><span>Lead Convert</span><strong id="m-conv">0</strong></div>
+        <div class="card"><span>Kadar Convert</span><strong id="m-rate">-</strong></div>
+        <div class="card"><span>Deposit Diterima</span><strong id="m-deposit">RM 0.00</strong></div>
+        <div class="card highlight"><span>Baki Belum Bayar</span><strong id="m-owed">RM 0.00</strong></div>
+      </div>
 
       <div class="split">
         <div>
@@ -58,6 +62,10 @@
         <div>
           <h2>Jenis Printing (bulan ini)</h2>
           <table id="t-printing"><thead><tr><th>Printing</th><th class="num">Pcs</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div>
+          <h2>Lead Source (bulan ini)</h2>
+          <table id="t-source"><thead><tr><th>Source</th><th class="num">Order</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
         </div>
       </div>
     </section>
@@ -95,7 +103,14 @@
             <select name="printing" required></select>
           </label>
           <label>Kuantiti (pcs) <input type="number" name="qty" min="1" required></label>
-          <label>Jumlah (RM) <input type="number" name="amount" min="0" step="0.01" required></label>
+          <label>Total (RM) <input type="number" name="amount" min="0" step="0.01" required></label>
+          <label>Deposit (RM) <input type="number" name="deposit" min="0" step="0.01" value="0"></label>
+          <label>Baki (RM) <input type="text" name="balance" readonly tabindex="-1" value="RM 0.00"></label>
+          <label>Lead Source
+            <select name="source" required></select>
+          </label>
+          <label>Expected Delivery <input type="date" name="delivery"></label>
+          <label class="wide">Notes <textarea name="notes" rows="2" placeholder="cth: saiz, warna, design"></textarea></label>
           <button type="button" class="remove" title="Buang">✕</button>
         </div>
       </template>
