@@ -8,6 +8,7 @@ Each time staff key in:
 - **Date**
 - **Total leads in** and **leads converted** (leads that became orders). **% leads converted** is calculated automatically
 - One or more **sales rows** (one row per order), each with:
+  - **Order date** (defaults to today, can be changed). Job age colours count from this date
   - **Customer name** and **phone no.**
   - **Category**: Work Shirt / Family Day Shirt / Sports Shirt / Birthday Shirt
   - **Printing**: DTF / Sublimation

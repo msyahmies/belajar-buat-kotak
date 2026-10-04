@@ -34,7 +34,7 @@ function normalizeEntries(list) {
   list.forEach(e => {
     e.date = normDate(e.date);
     e.createdAt = String(e.createdAt ?? '');
-    e.lines.forEach(l => { l.category = rename(l.category); l.source = rename(l.source); l.delivery = normDate(l.delivery); });
+    e.lines.forEach(l => { l.category = rename(l.category); l.source = rename(l.source); l.delivery = normDate(l.delivery); l.orderDate = normDate(l.orderDate); });
   });
   return list;
 }
@@ -258,6 +258,7 @@ function addLine() {
   $('[name=category]', node).innerHTML = CATEGORIES.map(c => `<option>${c}</option>`).join('');
   $('[name=printing]', node).innerHTML = PRINTINGS.map(p => `<option>${p}</option>`).join('');
   $('[name=source]', node).innerHTML = SOURCES.map(s => `<option>${s}</option>`).join('');
+  $('[name=orderDate]', node).value = todayStr(); // defaults to today; staff can change it
   $('.remove', node).addEventListener('click', () => {
     if ($$('#lines .line').length > 1) node.remove();
     updateFormTotal();
@@ -267,6 +268,7 @@ function addLine() {
 
 function readLines() {
   return $$('#lines .line').map(n => ({
+    orderDate: $('[name=orderDate]', n).value || todayStr(),
     customer: $('[name=customer]', n).value.trim(),
     phone: $('[name=phone]', n).value.trim(),
     category: $('[name=category]', n).value,
@@ -353,7 +355,7 @@ function monthEntries() {
 function lineDetail(l, deposit) {
   const parts = [
     `${l.customer ? `<b>${esc(l.customer)}</b>` : ''}${l.phone ? ` (${esc(l.phone)})` : ''}`,
-    `${l.qty} × ${esc(l.category)} (${esc(l.printing)})`,
+    `${l.qty} × ${esc(l.category)} (${esc(l.printing)})${l.orderDate ? ` · ordered ${esc(l.orderDate)}` : ''}`,
     `Total ${rm(l.amount)} · Deposit ${rm(deposit)} · Balance ${rm((Number(l.amount) || 0) - deposit)}`,
   ];
   if (l.source) parts.push(`Source: ${esc(l.source)}`);
@@ -396,11 +398,11 @@ async function onDelete(id) {
 }
 
 function exportCsv() {
-  const header = ['Date', 'Leads In', 'Leads Converted', '% Leads Converted', 'Customer Name', 'Phone No.', 'Category', 'Printing', 'Quantity', 'Total (RM)', 'Deposit (RM)', 'Balance (RM)', 'Lead Source', 'Expected Delivery', 'Notes'];
+  const header = ['Date', 'Order Date', 'Leads In', 'Leads Converted', '% Leads Converted', 'Customer Name', 'Phone No.', 'Category', 'Printing', 'Quantity', 'Total (RM)', 'Deposit (RM)', 'Balance (RM)', 'Lead Source', 'Expected Delivery', 'Notes'];
   const rows = [header];
   // Phone is written as ="012..." so Excel keeps the leading 0.
   for (const e of monthEntries().reverse()) {
-    e.lines.forEach((l, i) => rows.push([e.date, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, i === 0 ? convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 }) : '', l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, lineDeposit(e, i), (Number(l.amount) || 0) - lineDeposit(e, i), l.source || '', l.delivery || '', l.notes || '']));
+    e.lines.forEach((l, i) => rows.push([e.date, l.orderDate || e.date, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, i === 0 ? convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 }) : '', l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, lineDeposit(e, i), (Number(l.amount) || 0) - lineDeposit(e, i), l.source || '', l.delivery || '', l.notes || '']));
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const a = document.createElement('a');
@@ -544,7 +546,7 @@ function allJobs() {
   for (const e of entries) {
     e.lines.forEach((l, i) => {
       const key = jobKey(e, i);
-      const job = { ...l, ...(jobs[key] || {}), key, date: e.date, deposit: lineDeposit(e, i) };
+      const job = { ...l, ...(jobs[key] || {}), key, date: l.orderDate || e.date, deposit: lineDeposit(e, i) };
       job.stages = stagesFor(job);
       job.doneCount = job.stages.filter(s => s.done.includes(job[s.key])).length;
       job.current = job.stages.find(s => !s.done.includes(job[s.key]));
@@ -669,6 +671,7 @@ function openEdit(key) {
   f.category.innerHTML = opts(CATEGORIES, l.category);
   f.printing.innerHTML = opts(PRINTINGS, l.printing);
   f.source.innerHTML = opts(SOURCES, l.source);
+  f.orderDate.value = l.orderDate || found.entry.date;
   f.customer.value = l.customer || '';
   f.phone.value = l.phone || '';
   f.qty.value = l.qty || '';
@@ -689,6 +692,7 @@ async function onSaveEdit(ev) {
   const msg = $('#edit-msg');
   const line = {
     ...found.line,
+    orderDate: f.orderDate.value || found.entry.date,
     customer: f.customer.value.trim(),
     phone: f.phone.value.trim(),
     category: f.category.value,
