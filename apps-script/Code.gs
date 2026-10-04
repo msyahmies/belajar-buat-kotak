@@ -43,6 +43,7 @@ function doPost(e) {
       case 'updateExpense': updateExpense(req.expense); return json({ ok: true });
       case 'deleteExpense': deleteRowById(SHEET_EXPENSES, req.id); return json({ ok: true });
       case 'saveJob': saveJob(req.job); return json({ ok: true });
+      case 'deleteJob': deleteRowById(SHEET_JOBS, req.id); return json({ ok: true });
       case 'setOverhead': setOverhead(req.overhead); return json({ ok: true });
       case 'setTarget': setTarget(req.target); return json({ ok: true });
       default: return json({ ok: false, error: 'Invalid action' });

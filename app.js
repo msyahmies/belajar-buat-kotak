@@ -614,18 +614,18 @@ function renderHistory() {
   const list = monthEntries();
   const tbody = $('#t-history tbody');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="muted">No sales for this month.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="muted">No sales for this month.</td></tr>';
     return;
   }
   tbody.innerHTML = list.map(e => {
     const t = entryTotals(e);
     const detail = e.lines.map((l, i) => lineDetail(l, lineDeposit(e, i))
-      + ` <button type="button" class="edit-btn" data-edit="${esc(jobKey(e, i))}">✏️ Edit</button>`).join('<hr>');
+      + ` <button type="button" class="edit-btn" data-edit="${esc(jobKey(e, i))}">✏️ Edit</button>`
+      + ` <button type="button" class="danger small" data-del-line="${esc(jobKey(e, i))}">Delete</button>`).join('<hr>');
     return `<tr>
       <td>${e.date}</td>
       <td class="num">${t.pcs}</td><td class="num">${rm(t.sales)}</td>
       <td class="muted">${detail}</td>
-      <td><button class="danger" data-del="${esc(e.id)}">Delete</button></td>
     </tr>`;
   }).join('');
 }
@@ -641,6 +641,45 @@ async function onDelete(id) {
     renderAll();
   } catch (err) {
     alert('Delete failed: ' + err.message);
+  }
+}
+
+// Delete one order (one job). A key-in can hold several orders, so the others stay;
+// job progress is stored by row index, so the later rows' progress moves up one place.
+async function onDeleteLine(key) {
+  if (!isUnlocked()) { askPin(null); return; }
+  const found = findLine(key);
+  if (!found) return;
+  const { entry, index, line } = found;
+  if (!confirm(`Delete this order/job?\n${line.customer || '(no name)'} · ${line.qty} × ${line.category} · ${rm(line.amount)}\n\nThe sale is removed from the totals too.`)) return;
+  const n = entry.lines.length;
+  try {
+    if (n === 1) {
+      if (settings.syncUrl) await remote({ action: 'delete', id: entry.id });
+      entries = entries.filter(e => e.id !== entry.id);
+    } else {
+      const updated = { ...entry, lines: entry.lines.filter((_, i) => i !== index) };
+      if (settings.syncUrl) await remote({ action: 'update', entry: updated });
+      entries = entries.map(e => (e.id === entry.id ? updated : e));
+    }
+    save(LS_ENTRIES, entries);
+    const moved = [];
+    for (let i = index; i < n - 1; i++) {
+      const next = jobs[jobKey(entry, i + 1)];
+      if (next) { jobs[jobKey(entry, i)] = next; moved.push(jobKey(entry, i)); } else delete jobs[jobKey(entry, i)];
+    }
+    delete jobs[jobKey(entry, n - 1)];
+    save(LS_JOBS, jobs);
+    renderAll();
+    if (settings.syncUrl) {
+      for (const k of moved) await saveJob(k, {});
+      // Older Code.gs has no deleteJob; a leftover row there is harmless (no order uses that index any more).
+      await remote({ action: 'deleteJob', id: jobKey(entry, n - 1) }).catch(() => {});
+    }
+  } catch (err) {
+    alert(/Invalid action/.test(err.message)
+      ? 'Not deleted: update Code.gs in Google Sheet to the latest version first (Deploy > Manage deployments > New version).'
+      : 'Delete failed: ' + err.message);
   }
 }
 
@@ -932,6 +971,7 @@ function jobCard(job) {
         ${job.complete ? '' : `<span class="badge age ${age.level}">${age.days === 0 ? 'New today' : `Day ${age.days}`}</span>`}
         ${dueLabel(job)}
         <button type="button" class="edit-btn" data-edit="${esc(job.key)}">✏️ Edit</button>
+        <button type="button" class="danger small" data-del-line="${esc(job.key)}">Delete</button>
       </div>
     </div>
     <div class="progress"><div style="width:${pct}%" class="${job.complete ? 'done' : ''}"></div></div>
@@ -946,7 +986,8 @@ function waitingCard(job) {
         <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}` : ''}
         <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ${rm(job.amount)} · ordered ${esc(job.date)}</div>
       </div>
-      <div class="job-status"><button type="button" class="edit-btn" data-edit="${esc(job.key)}">✏️ Edit</button></div>
+      <div class="job-status"><button type="button" class="edit-btn" data-edit="${esc(job.key)}">✏️ Edit</button>
+        <button type="button" class="danger small" data-del-line="${esc(job.key)}">Delete</button></div>
       <form class="deposit-form" data-job="${esc(job.key)}">
         <input type="number" name="deposit" min="0.01" step="0.01" placeholder="Deposit (RM)" required>
         <button type="submit">Deposit Paid</button>
@@ -1405,6 +1446,8 @@ $('#job-list').addEventListener('change', ev => {
 $('#job-list').addEventListener('click', ev => {
   const btn = ev.target.closest('[data-edit]');
   if (btn) openEdit(btn.dataset.edit);
+  const del = ev.target.dataset?.delLine;
+  if (del) onDeleteLine(del);
 });
 $('#edit-form').addEventListener('submit', onSaveEdit);
 $('#edit-cancel').addEventListener('click', () => { $('#edit-modal').hidden = true; });
@@ -1423,6 +1466,8 @@ $('#t-history').addEventListener('click', ev => {
   if (id) onDelete(id);
   const edit = ev.target.closest('[data-edit]');
   if (edit) openEdit(edit.dataset.edit);
+  const del = ev.target.dataset?.delLine;
+  if (del) onDeleteLine(del);
 });
 
 // Makes the app installable (Add to Home Screen / Install app).

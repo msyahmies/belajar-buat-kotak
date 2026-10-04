@@ -73,6 +73,7 @@ td.neg { color: var(--red); }
 .job-actions { display: flex; justify-content: flex-end; }
 .edit-btn { background: var(--surface); color: var(--accent); border-color: var(--border); padding: 4px 12px; font-size: 0.8rem; }
 td.btn-cell { white-space: nowrap; }
+button.danger.small { padding: 4px 12px; font-size: 0.8rem; }
 nav { display: flex; gap: 4px; overflow-x: auto; }
 nav button {
   background: none;

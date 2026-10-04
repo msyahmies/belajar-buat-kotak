@@ -25,7 +25,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 - Orders and shirts sold for the day
 - Deposits received and balance unpaid for the month
 - Breakdown by shirt category and printing type
-- **History** tab: monthly list of sales (orders only, no leads), **✏️ Edit** each order, delete wrong records, download CSV (opens in Excel)
+- **History** tab: monthly list of sales (orders only, no leads), **✏️ Edit** or **Delete** each order (one order at a time, the other orders keyed in that day stay), download CSV (opens in Excel)
 
 ## Reports (Reports tab, owner only)
 
@@ -68,6 +68,7 @@ After staff save a key in, the app opens the **Jobs** tab.
 - A job is **complete** once it is sent by post (or collected)
 - Top cards show active, overdue, completed and waiting-deposit jobs, plus how many jobs are at each step
 - Jobs are sorted by expected delivery date, with **Due in X days** / **Overdue** badges
+- Press **Delete** on a job to remove it (owner PIN). This removes the order and its sale too; other jobs keep their progress
 - Press **✏️ Edit** on a job to change its order details (customer, phone, category, printing, quantity, total, deposit, lead source, delivery date, notes). Sales figures update too
 - Each open job is coloured by how long ago it came in: **green** for 0–3 days, **yellow** for 4–6 days, **red** for 7 days or more. Completed jobs turn **blue**
 
@@ -92,7 +93,7 @@ After staff save a key in, the app opens the **Jobs** tab.
 ## Owner PIN (Settings tab)
 
 - Set a 4–8 digit PIN in **Settings → Owner PIN**. It is saved in Google Sheet, so every staff device picks it up on its next sync
-- With a PIN set, **Expenses**, **Overhead**, **Reports**, **Settings** and the **Delete** buttons in History ask for the PIN. Staff can still use Dashboard, Key In, Jobs and History
+- With a PIN set, **Expenses**, **Overhead**, **Reports**, **Settings** and the **Delete** buttons for orders and jobs ask for the PIN. Staff can still use Dashboard, Key In, Jobs and History
 - On your own phone or PC, tick **Keep unlocked on this device** so you don't have to type the PIN each time. Use the **🔓 Lock** button at the top to lock again
 - The PIN keeps staff out of owner pages in normal use. It is not strong security: someone who knows how to read the page code or has the Google Sheet link can still get to the data
 - Forgot the PIN? In the Google Sheet, open the **Settings** sheet, cell **B2**, delete the `"pinHash":"…"` part, then reload the app on your device
