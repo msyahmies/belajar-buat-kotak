@@ -51,7 +51,7 @@ const LS_OVERHEAD = 'sales.overhead';
 const LS_PIN = 'sales.pinHash';
 const LS_KEEP_UNLOCKED = 'sales.keepUnlocked';
 const SS_UNLOCKED = 'sales.unlocked';
-const OWNER_TABS = ['expenses', 'overhead', 'reports', 'settings'];
+const OWNER_TABS = ['expenses', 'overhead', 'reports', 'leads', 'settings'];
 const OVERHEAD_FIELDS = [
   { key: 'rent', label: 'Shop rent' },
   { key: 'salary', label: 'Staff salary' },

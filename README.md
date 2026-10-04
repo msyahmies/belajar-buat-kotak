@@ -36,7 +36,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 - Costs = operation costs in the period + each day's share of monthly expenses and of the overhead in the Overhead tab (fixed costs are counted only up to today)
 - **Download Excel (CSV)** for the full report with every order, or **Print / Save PDF**
 
-## Ads & Leads (Ads tab)
+## Ads & Leads (Ads tab, owner only)
 
 Ad spend and leads live together in one tab, before Settings, so you can see straight away whether ads make or lose money.
 - **Daily Ads & Leads** form: date, **ad spend (RM)**, total leads in, leads converted; **% leads converted** is calculated automatically. One record per date; saving again for the same date replaces it
@@ -93,7 +93,7 @@ After staff save a key in, the app opens the **Jobs** tab.
 ## Owner PIN (Settings tab)
 
 - Set a 4–8 digit PIN in **Settings → Owner PIN**. It is saved in Google Sheet, so every staff device picks it up on its next sync
-- With a PIN set, **Expenses**, **Overhead**, **Reports**, **Settings** and the **Delete** buttons for orders and jobs ask for the PIN. Staff can still use Dashboard, Key In, Jobs and History
+- With a PIN set, **Expenses**, **Overhead**, **Reports**, **Ads**, **Settings** and the **Delete** buttons for orders and jobs ask for the PIN. Staff can still use Dashboard, Key In, Jobs and History
 - On your own phone or PC, tick **Keep unlocked on this device** so you don't have to type the PIN each time. Use the **🔓 Lock** button at the top to lock again
 - The PIN keeps staff out of owner pages in normal use. It is not strong security: someone who knows how to read the page code or has the Google Sheet link can still get to the data
 - Forgot the PIN? In the Google Sheet, open the **Settings** sheet, cell **B2**, delete the `"pinHash":"…"` part, then reload the app on your device
