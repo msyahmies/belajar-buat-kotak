@@ -28,7 +28,7 @@
       <button data-tab="expenses">Expenses</button>
       <button data-tab="overhead">Overhead</button>
       <button data-tab="reports">Reports</button>
-      <button data-tab="leads">Leads</button>
+      <button data-tab="leads">Ads</button>
       <button data-tab="settings">Settings</button>
     </nav>
   </header>
@@ -233,28 +233,45 @@
 
     <!-- LEADS -->
     <section id="tab-leads" class="tab">
-      <h2 style="margin-top:0">Daily Leads</h2>
+      <h2 style="margin-top:0">Daily Ads &amp; Leads</h2>
       <form id="leads-form" class="panel">
         <p class="muted">Enter once a day. Saving again for the same date replaces that day's numbers.</p>
         <div class="grid">
           <label>Date <input type="date" name="date" required></label>
+          <label>Ad Spend (RM) <input type="number" name="adSpend" min="0" step="0.01" value="0"></label>
           <label>Total Leads In <input type="number" name="leads" min="0" value="0" required></label>
           <label>Leads Converted <input type="number" name="converted" min="0" value="0" required></label>
           <label>% Leads Converted <input type="text" name="convRate" readonly tabindex="-1" value="-"></label>
         </div>
-        <button type="submit">Save Leads</button>
+        <button type="submit">Save</button>
+        <p id="ads-other" class="muted"></p>
         <p id="leads-msg" class="msg"></p>
       </form>
 
 
-      <h2>Selected Day</h2>
+      <h2>Ads Performance <span id="ads-month" class="muted"></span></h2>
+      <p class="muted">Purchases are the orders keyed in, sales are their total. ROAS below 1x means the ads cost more than the sales they brought in.</p>
+      <div class="cards key">
+        <div class="card"><span>Ad Spend</span><strong id="ads-spend">RM 0.00</strong><small id="ads-spend-sub"></small></div>
+        <div class="card"><span>Cost per Lead</span><strong id="ads-cpl">-</strong><small id="ads-cpl-sub"></small></div>
+        <div class="card"><span>Cost per Purchase</span><strong id="ads-cpp">-</strong><small id="ads-cpp-sub"></small></div>
+        <div class="card" id="ads-roas-card"><span>ROAS</span><strong id="ads-roas">-</strong><small id="ads-roas-sub"></small></div>
+      </div>
+      <div class="table-wrap">
+        <table id="t-ads">
+          <thead><tr><th>Date</th><th class="num">Ad Spend</th><th class="num">Leads</th><th class="num">Purchases</th><th class="num">Sales</th><th class="num">Cost/Lead</th><th class="num">Cost/Purchase</th><th class="num">ROAS</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <h2>Leads: Selected Day</h2>
       <div class="cards">
         <div class="card"><span>Leads In</span><strong id="ld-leads">0</strong></div>
         <div class="card"><span>Leads Converted</span><strong id="ld-conv">0</strong></div>
         <div class="card"><span>Conversion Rate</span><strong id="ld-rate">-</strong></div>
       </div>
 
-      <h2>This Month (<span id="lm-label"></span>)</h2>
+      <h2>Leads: This Month (<span id="lm-label"></span>)</h2>
       <div class="cards">
         <div class="card"><span>Leads In</span><strong id="lm-leads">0</strong></div>
         <div class="card"><span>Leads Converted</span><strong id="lm-conv">0</strong></div>
@@ -335,21 +352,6 @@
         <button type="submit">Save Expense</button>
         <p id="expense-msg" class="msg"></p>
       </form>
-
-      <h2>Ads Performance <span id="ads-month" class="muted"></span></h2>
-      <p class="muted">Key in your ad spend every day above, with category <b>Advertising / Ads</b>. Leads come from the Leads tab and purchases are the orders keyed in. <button type="button" id="ads-add" class="secondary">+ Add Ads Spend</button></p>
-      <div class="cards key">
-        <div class="card"><span>Ad Spend</span><strong id="ads-spend">RM 0.00</strong><small id="ads-spend-sub"></small></div>
-        <div class="card"><span>Cost per Lead</span><strong id="ads-cpl">-</strong><small id="ads-cpl-sub"></small></div>
-        <div class="card"><span>Cost per Purchase</span><strong id="ads-cpp">-</strong><small id="ads-cpp-sub"></small></div>
-        <div class="card" id="ads-roas-card"><span>ROAS</span><strong id="ads-roas">-</strong><small id="ads-roas-sub"></small></div>
-      </div>
-      <div class="table-wrap">
-        <table id="t-ads">
-          <thead><tr><th>Date</th><th class="num">Ad Spend</th><th class="num">Leads</th><th class="num">Purchases</th><th class="num">Sales</th><th class="num">Cost/Lead</th><th class="num">Cost/Purchase</th><th class="num">ROAS</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
 
       <div class="split">
         <div>

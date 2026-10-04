@@ -36,13 +36,19 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 - Costs = operation costs in the period + each day's share of monthly expenses and of the overhead in the Overhead tab (fixed costs are counted only up to today)
 - **Download Excel (CSV)** for the full report with every order, or **Print / Save PDF**
 
-## Leads (Leads tab)
+## Ads & Leads (Ads tab)
 
-Everything about leads lives in its own tab, before Settings:
-- **Daily Leads** form: date, total leads in, leads converted; **% leads converted** is calculated automatically. One record per date; saving again for the same date replaces it
-- Leads, converted and conversion rate for the selected day and for the month
-- A list of each day's leads this month
+Ad spend and leads live together in one tab, before Settings, so you can see straight away whether ads make or lose money.
+- **Daily Ads & Leads** form: date, **ad spend (RM)**, total leads in, leads converted; **% leads converted** is calculated automatically. One record per date; saving again for the same date replaces it
+- The ad spend is saved as an expense (category **Advertising / Ads**), so it still counts in Expenses, Overhead and Reports. Ad spend recorded elsewhere for that day (Meta auto import, Telegram, Expenses tab) is added on top and shown under the form
+- **Ads performance** for the month and the selected day:
+  - **Cost per lead** = ad spend ÷ leads in
+  - **Cost per purchase** = ad spend ÷ orders keyed in
+  - **ROAS** = sales ÷ ad spend (e.g. 5.00x means RM5 sales for every RM1 of ads; below 1x is shown in red)
+  - A day-by-day table with spend, leads, purchases, sales, cost per lead, cost per purchase and ROAS
+- Leads, converted and conversion rate for the selected day and for the month, and a list of each day's leads
 - **Lead source of orders**: how many orders and how much RM came from WhatsApp, Facebook, TikTok, etc.
+- If ads are keyed in daily here, leave **Advertising** in the Overhead tab at 0 so it isn't counted twice
 
 ## Job Status (Jobs tab)
 
@@ -72,15 +78,6 @@ After staff save a key in, the app opens the **Jobs** tab.
 - For daily profit, monthly overheads are spread evenly over every day of the month
 - **Monthly profit/loss** = month's sales − all month's expenses (green = profit, red = loss)
 - **Daily profit/loss** = day's sales − that day's daily expenses − (monthly overhead ÷ days in month)
-
-### Ads performance (Expenses tab)
-
-- Key in ad spend every day as an expense with category **Advertising / Ads** (the **+ Add Ads Spend** button fills it in for you)
-- **Cost per lead** = ad spend ÷ leads in (from the Leads tab)
-- **Cost per purchase** = ad spend ÷ orders keyed in
-- **ROAS** = sales ÷ ad spend (e.g. 5.00x means RM5 sales for every RM1 of ads; below 1x is shown in red)
-- Shown for the month and for the selected day, plus a day-by-day table
-- If ads are keyed in daily here, leave **Advertising** in the Overhead tab at 0 so it isn't counted twice
 
 ## Overhead & Break-even (Overhead tab)
 
@@ -137,9 +134,9 @@ Set up the Telegram bot first (section above).
 5. **Deploy → Manage deployments → Edit → New version → Deploy**
 
 **Notes:**
-- Once this is running, don't key in Meta ad spend by hand too, or it is counted twice. TikTok or other ads still go in by hand
+- Once this is running, put only non-Meta ads (TikTok etc.) in the Ads tab's ad spend box, or Meta spend is counted twice
 - Running it again for the same day replaces that day's Meta spend, so it never doubles
-- Leads must be keyed in (Leads tab) for cost per lead. If they weren't in yet at 8am, key them in and send **/ads** to the bot for a fresh report (`/ads 2026-10-03` for another day)
+- Leads must be keyed in (Ads tab) for cost per lead. If they weren't in yet at 8am, key them in and send **/ads** to the bot for a fresh report (`/ads 2026-10-03` for another day)
 
 ## How to use
 

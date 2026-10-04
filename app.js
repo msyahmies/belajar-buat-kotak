@@ -374,10 +374,11 @@ function exportReportCsv() {
   URL.revokeObjectURL(a.href);
 }
 
-// ---------- Leads tab ----------
+// ---------- Ads tab (ad spend + leads) ----------
 
 function renderLeads() {
   const date = $('#leads-form').date.value || todayStr();
+  renderAds(date);
   const month = date.slice(0, 7);
   const [y, m] = month.split('-').map(Number);
   const day = summarize(entries.filter(e => e.date === date));
@@ -452,14 +453,44 @@ function updateConvRate() {
 const isLeadsOnly = e => !e.lines.length;
 const leadsFor = date => entries.find(e => isLeadsOnly(e) && e.date === date);
 
+// Ad spend keyed in on the Ads tab is one expense per date with id "ads-<date>".
+// Other ads expenses that day (Meta auto import, Telegram, Expenses tab) are added on top.
+const adSpendId = date => 'ads-' + date;
+const adSpendFor = date => expenses.find(x => x.id === adSpendId(date));
+
+function showOtherAdSpend(date) {
+  const other = sumAmount(expenses.filter(x => x.date === date && x.category === ADS_CATEGORY && x.id !== adSpendId(date)));
+  $('#ads-other').textContent = other ? `Plus ${rm(other)} other ad spend already recorded for this date (Meta auto, Telegram or Expenses tab).` : '';
+}
+
 function fillLeadsForm() {
   const f = $('#leads-form');
   const rec = leadsFor(f.date.value);
+  const spend = adSpendFor(f.date.value);
+  f.adSpend.value = spend ? spend.amount : 0;
   f.leads.value = rec ? rec.leads : 0;
   f.converted.value = rec ? rec.converted : 0;
   $('#leads-msg').className = 'msg';
-  $('#leads-msg').textContent = rec ? `Already saved for this date: ${rec.leads} in, ${rec.converted} converted.` : '';
+  $('#leads-msg').textContent = rec || spend
+    ? `Already saved for this date: ad spend ${rm(spend ? spend.amount : 0)}, ${rec ? rec.leads : 0} leads in, ${rec ? rec.converted : 0} converted.` : '';
+  showOtherAdSpend(f.date.value);
   updateConvRate();
+}
+
+// Replace the day's ad spend expense: delete the old one, then add the new amount (if any).
+async function saveAdSpend(date, amount) {
+  const old = adSpendFor(date);
+  if (old && Number(old.amount) === amount) return;
+  if (old) {
+    if (settings.syncUrl) await remote({ action: 'deleteExpense', id: old.id });
+    expenses = expenses.filter(x => x.id !== old.id);
+  }
+  if (amount > 0) {
+    const x = { id: adSpendId(date), date, kind: 'harian', category: ADS_CATEGORY, amount, notes: 'Ads tab', createdAt: new Date().toISOString() };
+    if (settings.syncUrl) await remote({ action: 'addExpense', expense: x });
+    expenses.push(x);
+  }
+  save(LS_EXPENSES, expenses);
 }
 
 async function onSubmitLeads(ev) {
@@ -475,15 +506,20 @@ async function onSubmitLeads(ev) {
     lines: [],
     createdAt: existing ? existing.createdAt : new Date().toISOString(),
   };
+  const spend = Math.round((Number(f.adSpend.value) || 0) * 100) / 100;
   const btn = $('button[type=submit]', f);
   btn.disabled = true;
   try {
-    if (settings.syncUrl) await remote({ action: existing ? 'update' : 'add', entry: rec });
-    entries = existing ? entries.map(e => (e.id === rec.id ? rec : e)) : [...entries, rec];
-    save(LS_ENTRIES, entries);
+    await saveAdSpend(rec.date, spend);
+    // No leads record yet and nothing to put in one: only the ad spend was keyed in.
+    if (existing || rec.leads || rec.converted) {
+      if (settings.syncUrl) await remote({ action: existing ? 'update' : 'add', entry: rec });
+      entries = existing ? entries.map(e => (e.id === rec.id ? rec : e)) : [...entries, rec];
+      save(LS_ENTRIES, entries);
+    }
     renderAll();
     msg.className = 'msg ok';
-    msg.textContent = `Saved leads for ${rec.date}: ${rec.leads} in, ${rec.converted} converted (${convRate(rec)}).`;
+    msg.textContent = `Saved for ${rec.date}: ad spend ${rm(spend)}, ${rec.leads} leads in, ${rec.converted} converted (${convRate(rec)}).`;
   } catch (e) {
     msg.className = 'msg err';
     msg.textContent = /Invalid action/.test(e.message)
@@ -658,8 +694,6 @@ function renderExpenses() {
   $('#p-day-sub').textContent = `Sales ${rm(daySales)} − expenses ${rm(dayCost)} − overhead ${rm(overheadPerDay)}/day`;
   setProfitCard($('#p-day-card'), dayProfit);
 
-  renderAds(date, monExp);
-
   const byCat = {};
   monExp.forEach(x => byCat[x.category] = (byCat[x.category] || 0) + (Number(x.amount) || 0));
   const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
@@ -690,22 +724,22 @@ function adsStats(spendList, entryList) {
   return { spend: sumAmount(spendList), leads: s.leads, orders: entryList.reduce((t, e) => t + e.lines.length, 0), sales: s.sales };
 }
 
-function renderAds(date, monExp) {
+function renderAds(date) {
   const month = date.slice(0, 7);
-  const adsExp = monExp.filter(x => x.category === ADS_CATEGORY);
+  const adsExp = expenses.filter(x => x.date.startsWith(month) && x.category === ADS_CATEGORY);
   const monEntries = entries.filter(e => e.date.startsWith(month));
   const mon = adsStats(adsExp, monEntries);
   const day = adsStats(adsExp.filter(x => x.date === date), monEntries.filter(e => e.date === date));
 
   $('#ads-month').textContent = `(${new Date(month + '-01T00:00').toLocaleDateString('en-MY', { month: 'long', year: 'numeric' })})`;
   $('#ads-spend').textContent = rm(mon.spend);
-  $('#ads-spend-sub').textContent = `Today ${rm(day.spend)}`;
+  $('#ads-spend-sub').textContent = `Selected day ${rm(day.spend)}`;
   $('#ads-cpl').textContent = perUnit(mon.spend, mon.leads);
-  $('#ads-cpl-sub').textContent = `${mon.leads} leads · today ${perUnit(day.spend, day.leads)}`;
+  $('#ads-cpl-sub').textContent = `${mon.leads} leads · day ${perUnit(day.spend, day.leads)}`;
   $('#ads-cpp').textContent = perUnit(mon.spend, mon.orders);
-  $('#ads-cpp-sub').textContent = `${mon.orders} purchases · today ${perUnit(day.spend, day.orders)}`;
+  $('#ads-cpp-sub').textContent = `${mon.orders} purchases · day ${perUnit(day.spend, day.orders)}`;
   $('#ads-roas').textContent = roas(mon.sales, mon.spend);
-  $('#ads-roas-sub').textContent = `Sales ${rm(mon.sales)} · today ${roas(day.sales, day.spend)}`;
+  $('#ads-roas-sub').textContent = `Sales ${rm(mon.sales)} · day ${roas(day.sales, day.spend)}`;
   // Below 1x the ads cost more than the sales they brought in.
   const card = $('#ads-roas-card');
   card.classList.toggle('c-green', mon.spend > 0 && mon.sales >= mon.spend);
@@ -1275,14 +1309,7 @@ $('#oh-items').addEventListener('click', ev => { if (ev.target.closest('.remove'
 $('#overhead-form').addEventListener('submit', onSubmitOverhead);
 $('#exp-date').value = todayStr();
 $('#exp-date').addEventListener('change', renderExpenses);
-$('#ads-add').addEventListener('click', () => {
-  const f = $('#expense-form');
-  f.category.value = ADS_CATEGORY;
-  f.kind.value = 'harian';
-  f.date.value = $('#exp-date').value || todayStr();
-  f.scrollIntoView({ behavior: 'smooth' });
-  f.amount.focus({ preventScroll: true });
-});
+
 $('#expense-form').date.value = todayStr();
 $('#expense-form').category.innerHTML =
   `<optgroup label="Operation cost">${OPERATION_COSTS.map(c => `<option>${c}</option>`).join('')}</optgroup>`
