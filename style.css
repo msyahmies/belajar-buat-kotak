@@ -72,6 +72,7 @@ td.neg { color: var(--red); }
 @media (max-width: 480px) { .edit-grid { grid-template-columns: 1fr; } }
 .job-actions { display: flex; justify-content: flex-end; }
 .edit-btn { background: var(--surface); color: var(--accent); border-color: var(--border); padding: 4px 12px; font-size: 0.8rem; }
+td.btn-cell { white-space: nowrap; }
 nav { display: flex; gap: 4px; overflow-x: auto; }
 nav button {
   background: none;

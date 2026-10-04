@@ -404,7 +404,7 @@ function renderLeads() {
   const days = Object.entries(byDay).sort((a, b) => b[0].localeCompare(a[0]));
   $('#t-leads tbody').innerHTML = days.length
     ? days.map(([d, v]) => `<tr><td>${d}</td><td class="num">${v.leads}</td><td class="num">${v.converted}</td><td class="num">${convRate(v)}</td>
-        <td>${v.ids.map(id => `<button class="danger" data-del="${esc(id)}">Delete</button>`).join('')}</td></tr>`).join('')
+        <td class="btn-cell"><button type="button" class="edit-btn" data-edit-day="${d}">✏️ Edit</button> ${v.ids.map(id => `<button class="danger" data-del="${esc(id)}">Delete</button>`).join('')}</td></tr>`).join('')
     : '<tr><td colspan="5" class="muted">No leads recorded this month.</td></tr>';
 
   const sources = Object.entries(mon.bySource).sort((a, b) => b[1].sales - a[1].sales);
@@ -458,9 +458,13 @@ const leadsFor = date => entries.find(e => isLeadsOnly(e) && e.date === date);
 const adSpendId = date => 'ads-' + date;
 const adSpendFor = date => expenses.find(x => x.id === adSpendId(date));
 
+// Lists the day's other ad spend records, each with its own Edit button.
 function showOtherAdSpend(date) {
-  const other = sumAmount(expenses.filter(x => x.date === date && x.category === ADS_CATEGORY && x.id !== adSpendId(date)));
-  $('#ads-other').textContent = other ? `Plus ${rm(other)} other ad spend already recorded for this date (Meta auto, Telegram or Expenses tab).` : '';
+  const other = expenses.filter(x => x.date === date && x.category === ADS_CATEGORY && x.id !== adSpendId(date));
+  $('#ads-other').innerHTML = other.length
+    ? `Also recorded for this date (added on top):<br>` + other.map(x =>
+      `${rm(x.amount)}${x.notes ? ` · ${esc(x.notes)}` : ''} <button type="button" class="edit-btn" data-edit-exp="${esc(x.id)}">✏️ Edit</button>`).join('<br>')
+    : '';
 }
 
 function fillLeadsForm() {
@@ -615,7 +619,8 @@ function renderHistory() {
   }
   tbody.innerHTML = list.map(e => {
     const t = entryTotals(e);
-    const detail = e.lines.map((l, i) => lineDetail(l, lineDeposit(e, i))).join('<hr>');
+    const detail = e.lines.map((l, i) => lineDetail(l, lineDeposit(e, i))
+      + ` <button type="button" class="edit-btn" data-edit="${esc(jobKey(e, i))}">✏️ Edit</button>`).join('<hr>');
     return `<tr>
       <td>${e.date}</td>
       <td class="num">${t.pcs}</td><td class="num">${rm(t.sales)}</td>
@@ -707,7 +712,7 @@ function renderExpenses() {
         <td>${esc(x.date)}</td><td>${x.kind === 'bulanan' ? 'Monthly' : 'Daily'}</td><td>${esc(x.category)}</td>
         <td class="num">${rm(x.amount)}</td><td class="muted">${esc(x.notes || '')}</td>
         <td>${/^https:\/\/(drive|docs)\.google\.com\//.test(x.receipt || '') ? `<a href="${esc(x.receipt)}" target="_blank" rel="noopener">View</a>` : ''}</td>
-        <td><button class="danger" data-del-exp="${esc(x.id)}">Delete</button></td>
+        <td class="btn-cell"><button type="button" class="edit-btn" data-edit-exp="${esc(x.id)}">✏️ Edit</button> <button class="danger" data-del-exp="${esc(x.id)}">Delete</button></td>
       </tr>`).join('')
     : '<tr><td colspan="7" class="muted">No expenses for this month.</td></tr>';
 }
@@ -751,8 +756,9 @@ function renderAds(date) {
   $('#t-ads tbody').innerHTML = rows.length
     ? rows.map(([d, r]) => `<tr><td>${d}</td><td class="num">${rm(r.spend)}</td><td class="num">${r.leads}</td><td class="num">${r.orders}</td>
         <td class="num">${rm(r.sales)}</td><td class="num">${perUnit(r.spend, r.leads)}</td><td class="num">${perUnit(r.spend, r.orders)}</td>
-        <td class="num${r.spend && r.sales < r.spend ? ' neg' : ''}">${roas(r.sales, r.spend)}</td></tr>`).join('')
-    : '<tr><td colspan="8" class="muted">No ad spend, leads or orders this month.</td></tr>';
+        <td class="num${r.spend && r.sales < r.spend ? ' neg' : ''}">${roas(r.sales, r.spend)}</td>
+        <td><button type="button" class="edit-btn" data-edit-day="${d}">✏️ Edit</button></td></tr>`).join('')
+    : '<tr><td colspan="9" class="muted">No ad spend, leads or orders this month.</td></tr>';
 }
 
 async function onSubmitExpense(ev) {
@@ -782,6 +788,52 @@ async function onSubmitExpense(ev) {
   } catch (e) {
     msg.className = 'msg err';
     msg.textContent = 'Save failed: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+let editingExpense = null;
+
+function openExpenseEdit(id) {
+  const x = expenses.find(e => e.id === id);
+  if (!x) return;
+  editingExpense = id;
+  const f = $('#exp-edit-form');
+  const known = [...OPERATION_COSTS, ...OVERHEAD_COSTS];
+  f.category.innerHTML = `<optgroup label="Operation cost">${OPERATION_COSTS.map(c => `<option>${c}</option>`).join('')}</optgroup>`
+    + `<optgroup label="Overhead (monthly)">${OVERHEAD_COSTS.map(c => `<option>${c}</option>`).join('')}</optgroup>`
+    + (known.includes(x.category) ? '' : `<option>${esc(x.category)}</option>`);
+  f.date.value = x.date;
+  f.category.value = x.category;
+  f.kind.value = x.kind === 'bulanan' ? 'bulanan' : 'harian';
+  f.amount.value = x.amount;
+  f.notes.value = x.notes || '';
+  $('#exp-edit-msg').textContent = '';
+  $('#exp-edit-modal').hidden = false;
+  f.amount.focus();
+}
+
+async function onSaveExpenseEdit(ev) {
+  ev.preventDefault();
+  const old = expenses.find(e => e.id === editingExpense);
+  if (!old) return;
+  const f = ev.target;
+  const msg = $('#exp-edit-msg');
+  const x = { ...old, date: f.date.value, kind: f.kind.value, category: f.category.value, amount: Number(f.amount.value) || 0, notes: f.notes.value.trim() };
+  const btn = $('button[type=submit]', f);
+  btn.disabled = true;
+  try {
+    if (settings.syncUrl) await remote({ action: 'updateExpense', expense: x });
+    expenses = expenses.map(e => (e.id === x.id ? x : e));
+    save(LS_EXPENSES, expenses);
+    $('#exp-edit-modal').hidden = true;
+    renderAll();
+  } catch (e) {
+    msg.className = 'msg err';
+    msg.textContent = /Invalid action/.test(e.message)
+      ? 'Not saved: update Code.gs in Google Sheet to the latest version first (Deploy > Manage deployments > New version).'
+      : 'Not saved: ' + e.message;
   } finally {
     btn.disabled = false;
   }
@@ -999,7 +1051,7 @@ async function onSaveEdit(ev) {
     $('#edit-modal').hidden = true;
     renderAll();
     // Keep the Jobs sheet in step (name, phone, deposit) and redraw.
-    saveJob(editingKey, { deposit: line.deposit });
+    if (jobs[editingKey] || line.deposit) saveJob(editingKey, { deposit: line.deposit });
   } catch (e) {
     msg.className = 'msg err';
     msg.textContent = /Invalid action/.test(e.message)
@@ -1288,6 +1340,21 @@ $('#leads-form').leads.addEventListener('input', updateConvRate);
 $('#leads-form').converted.addEventListener('input', updateConvRate);
 $('#leads-form').date.addEventListener('change', () => { fillLeadsForm(); renderLeads(); });
 $('#t-leads').addEventListener('click', ev => { const id = ev.target.dataset?.del; if (id) onDelete(id); });
+// Edit on a day in the Ads tab tables: load that day into the form above.
+$('#tab-leads').addEventListener('click', ev => {
+  const exp = ev.target.dataset?.editExp;
+  if (exp) { openExpenseEdit(exp); return; }
+  const day = ev.target.dataset?.editDay;
+  if (!day) return;
+  const f = $('#leads-form');
+  f.date.value = day;
+  fillLeadsForm();
+  renderLeads();
+  $('#leads-msg').className = 'msg';
+  $('#leads-msg').textContent = `Editing ${day}: change the numbers and press Save.`;
+  f.scrollIntoView({ behavior: 'smooth' });
+  f.adSpend.focus({ preventScroll: true });
+});
 $('#leads-form').addEventListener('submit', onSubmitLeads);
 $('#leads-form').date.value = todayStr();
 $('#entry-form').addEventListener('submit', onSubmitEntry);
@@ -1321,6 +1388,13 @@ $('#expense-form').addEventListener('submit', onSubmitExpense);
 $('#t-expenses').addEventListener('click', ev => {
   const id = ev.target.dataset?.delExp;
   if (id) onDeleteExpense(id);
+  const edit = ev.target.dataset?.editExp;
+  if (edit) openExpenseEdit(edit);
+});
+$('#exp-edit-form').addEventListener('submit', onSaveExpenseEdit);
+$('#exp-edit-cancel').addEventListener('click', () => { $('#exp-edit-modal').hidden = true; });
+$('#exp-edit-form').category.addEventListener('change', ev => {
+  ev.target.form.kind.value = OVERHEAD_COSTS.includes(ev.target.value) ? 'bulanan' : 'harian';
 });
 $('#job-filter').addEventListener('change', renderJobs);
 $('#job-search').addEventListener('input', renderJobs);
@@ -1347,6 +1421,8 @@ $('#pin-remove').addEventListener('click', onRemovePin);
 $('#t-history').addEventListener('click', ev => {
   const id = ev.target.dataset?.del;
   if (id) onDelete(id);
+  const edit = ev.target.closest('[data-edit]');
+  if (edit) openEdit(edit.dataset.edit);
 });
 
 // Makes the app installable (Add to Home Screen / Install app).

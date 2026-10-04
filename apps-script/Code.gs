@@ -40,6 +40,7 @@ function doPost(e) {
       case 'update': updateEntry(req.entry); return json({ ok: true });
       case 'delete': deleteEntry(req.id); return json({ ok: true });
       case 'addExpense': addExpense(req.expense); return json({ ok: true });
+      case 'updateExpense': updateExpense(req.expense); return json({ ok: true });
       case 'deleteExpense': deleteRowById(SHEET_EXPENSES, req.id); return json({ ok: true });
       case 'saveJob': saveJob(req.job); return json({ ok: true });
       case 'setOverhead': setOverhead(req.overhead); return json({ ok: true });
@@ -152,6 +153,21 @@ function listExpenses() {
 function addExpense(x) {
   if (!x || !x.id || !x.date) throw new Error('Incomplete data');
   appendWithTextDate(sheet(SHEET_EXPENSES), [x.id, x.date, x.kind === 'bulanan' ? 'Monthly' : 'Daily', x.category, Number(x.amount) || 0, x.notes || '', x.createdAt]);
+}
+
+// Change an expense in place (keeps its receipt link).
+function updateExpense(x) {
+  if (!x || !x.id || !x.date) throw new Error('Incomplete data');
+  const sh = sheet(SHEET_EXPENSES);
+  const ids = sh.getRange(1, 1, sh.getLastRow(), 1).getValues();
+  for (let i = 1; i < ids.length; i++) {
+    if (String(ids[i][0]) === String(x.id)) {
+      sh.getRange('B:B').setNumberFormat('@');
+      sh.getRange(i + 1, 2, 1, 5).setValues([[x.date, x.kind === 'bulanan' ? 'Monthly' : 'Daily', x.category, Number(x.amount) || 0, x.notes || '']]);
+      return;
+    }
+  }
+  throw new Error('Expense not found');
 }
 
 // Jobs are keyed "<sale id>:<row index>"; returns { key: { deposit, design, ... } }.

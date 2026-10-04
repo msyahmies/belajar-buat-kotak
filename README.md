@@ -25,7 +25,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 - Orders and shirts sold for the day
 - Deposits received and balance unpaid for the month
 - Breakdown by shirt category and printing type
-- **History** tab: monthly list of sales (orders only, no leads), delete wrong records, download CSV (opens in Excel)
+- **History** tab: monthly list of sales (orders only, no leads), **✏️ Edit** each order, delete wrong records, download CSV (opens in Excel)
 
 ## Reports (Reports tab, owner only)
 
@@ -40,6 +40,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 
 Ad spend and leads live together in one tab, before Settings, so you can see straight away whether ads make or lose money.
 - **Daily Ads & Leads** form: date, **ad spend (RM)**, total leads in, leads converted; **% leads converted** is calculated automatically. One record per date; saving again for the same date replaces it
+- To fix a mistake, press **✏️ Edit** on that day in the ads or leads table: the day loads into the form, change it and press Save. Ad spend recorded elsewhere that day is listed under the form with its own **✏️ Edit**
 - The ad spend is saved as an expense (category **Advertising / Ads**), so it still counts in Expenses, Overhead and Reports. Ad spend recorded elsewhere for that day (Meta auto import, Telegram, Expenses tab) is added on top and shown under the form
 - **Ads performance** for the month and the selected day:
   - **Cost per lead** = ad spend ÷ leads in
@@ -72,7 +73,7 @@ After staff save a key in, the app opens the **Jobs** tab.
 
 ## Expenses & Profit/Loss (Expenses tab)
 
-- Enter every expense: date, category, type, amount and notes
+- Enter every expense: date, category, type, amount and notes. Press **✏️ Edit** on an expense to fix it (needs the latest `Code.gs`)
 - **Operation costs** (Daily type): blank shirts, DTF sticker / film, sublimation paper & ink, ink, plastic / packaging, postage, ads, machine maintenance
 - **Overheads** (Monthly type): shop rent, staff salary, electricity & water, internet & phone. The type is picked automatically from the category
 - For daily profit, monthly overheads are spread evenly over every day of the month

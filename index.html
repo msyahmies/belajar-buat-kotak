@@ -259,7 +259,7 @@
       </div>
       <div class="table-wrap">
         <table id="t-ads">
-          <thead><tr><th>Date</th><th class="num">Ad Spend</th><th class="num">Leads</th><th class="num">Purchases</th><th class="num">Sales</th><th class="num">Cost/Lead</th><th class="num">Cost/Purchase</th><th class="num">ROAS</th></tr></thead>
+          <thead><tr><th>Date</th><th class="num">Ad Spend</th><th class="num">Leads</th><th class="num">Purchases</th><th class="num">Sales</th><th class="num">Cost/Lead</th><th class="num">Cost/Purchase</th><th class="num">ROAS</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -281,7 +281,9 @@
       <div class="split">
         <div>
           <h2>Daily Leads (this month)</h2>
-          <table id="t-leads"><thead><tr><th>Date</th><th class="num">In</th><th class="num">Converted</th><th class="num">%</th><th></th></tr></thead><tbody></tbody></table>
+          <div class="table-wrap">
+            <table id="t-leads"><thead><tr><th>Date</th><th class="num">In</th><th class="num">Converted</th><th class="num">%</th><th></th></tr></thead><tbody></tbody></table>
+          </div>
         </div>
         <div>
           <h2>Lead Source of Orders (this month)</h2>
@@ -453,7 +455,7 @@
   <!-- Edit a job's order details -->
   <div id="edit-modal" class="modal" hidden>
     <form id="edit-form" class="modal-box modal-wide">
-      <h2>Edit Job</h2>
+      <h2>Edit Order</h2>
       <div class="edit-grid">
         <label>Order Date <input type="date" name="orderDate" required></label>
         <label>Customer Name <input type="text" name="customer" required></label>
@@ -471,6 +473,27 @@
       <div class="btn-row">
         <button type="submit">Save Changes</button>
         <button type="button" id="edit-cancel" class="secondary">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="exp-edit-modal" class="modal" hidden>
+    <form id="exp-edit-form" class="modal-box">
+      <h2>Edit Expense</h2>
+      <label>Date <input type="date" name="date" required></label>
+      <label>Category <select name="category" required></select></label>
+      <label>Type
+        <select name="kind">
+          <option value="harian">Daily</option>
+          <option value="bulanan">Monthly</option>
+        </select>
+      </label>
+      <label>Amount (RM) <input type="number" name="amount" min="0.01" step="0.01" required></label>
+      <label>Notes <input type="text" name="notes"></label>
+      <p id="exp-edit-msg" class="msg"></p>
+      <div class="btn-row">
+        <button type="submit">Save Changes</button>
+        <button type="button" id="exp-edit-cancel" class="secondary">Cancel</button>
       </div>
     </form>
   </div>
