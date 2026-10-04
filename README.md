@@ -19,6 +19,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 **Daily Leads** (a separate box in the Key In tab, saved on its own):
 - **Date**, **total leads in** and **leads converted**. **% leads converted** is calculated automatically
 - One record per date; saving again for the same date replaces it
+- Leads show on the Dashboard only, not in History
 
 ## What the Dashboard shows
 
@@ -29,7 +30,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 - Shirts sold, leads in, leads converted and conversion rate for the day and the month
 - Deposits received and balance unpaid for the month
 - Breakdown by shirt category, printing type and lead source
-- **History** tab: monthly list of records, delete wrong records, download CSV (opens in Excel)
+- **History** tab: monthly list of sales (orders only, no leads), delete wrong records, download CSV (opens in Excel)
 
 ## Job Status (Jobs tab)
 

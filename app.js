@@ -393,7 +393,7 @@ async function onSubmitEntry(ev) {
 function monthEntries() {
   const month = $('#hist-month').value || todayStr().slice(0, 7);
   return entries
-    .filter(e => e.date.startsWith(month))
+    .filter(e => e.date.startsWith(month) && !isLeadsOnly(e))
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -413,14 +413,14 @@ function renderHistory() {
   const list = monthEntries();
   const tbody = $('#t-history tbody');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="muted">No records for this month.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="muted">No sales for this month.</td></tr>';
     return;
   }
   tbody.innerHTML = list.map(e => {
     const t = entryTotals(e);
-    const detail = isLeadsOnly(e) ? 'Daily leads' : e.lines.map((l, i) => lineDetail(l, lineDeposit(e, i))).join('<hr>');
+    const detail = e.lines.map((l, i) => lineDetail(l, lineDeposit(e, i))).join('<hr>');
     return `<tr>
-      <td>${e.date}</td><td class="num">${e.leads || 0}</td><td class="num">${e.converted || 0}</td><td class="num">${convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 })}</td>
+      <td>${e.date}</td>
       <td class="num">${t.pcs}</td><td class="num">${rm(t.sales)}</td>
       <td class="muted">${detail}</td>
       <td><button class="danger" data-del="${esc(e.id)}">Delete</button></td>
@@ -443,12 +443,11 @@ async function onDelete(id) {
 }
 
 function exportCsv() {
-  const header = ['Date', 'Order Date', 'Leads In', 'Leads Converted', '% Leads Converted', 'Customer Name', 'Phone No.', 'Category', 'Printing', 'Quantity', 'Total (RM)', 'Deposit (RM)', 'Balance (RM)', 'Lead Source', 'Expected Delivery', 'Notes'];
+  const header = ['Date', 'Order Date', 'Customer Name', 'Phone No.', 'Category', 'Printing', 'Quantity', 'Total (RM)', 'Deposit (RM)', 'Balance (RM)', 'Lead Source', 'Expected Delivery', 'Notes'];
   const rows = [header];
   // Phone is written as ="012..." so Excel keeps the leading 0.
   for (const e of monthEntries().reverse()) {
-    if (isLeadsOnly(e)) rows.push([e.date, '', e.leads || 0, e.converted || 0, convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 }), 'Daily leads', '', '', '', '', '', '', '', '', '', '']);
-    e.lines.forEach((l, i) => rows.push([e.date, l.orderDate || e.date, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, i === 0 ? convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 }) : '', l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, lineDeposit(e, i), (Number(l.amount) || 0) - lineDeposit(e, i), l.source || '', l.delivery || '', l.notes || '']));
+    e.lines.forEach((l, i) => rows.push([e.date, l.orderDate || e.date, l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, lineDeposit(e, i), (Number(l.amount) || 0) - lineDeposit(e, i), l.source || '', l.delivery || '', l.notes || '']));
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const a = document.createElement('a');
