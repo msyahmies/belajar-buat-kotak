@@ -563,6 +563,12 @@ function dueLabel(job) {
   return `<span class="badge${days <= 2 ? ' yellow' : ''}">Due in ${days} day${days === 1 ? '' : 's'}</span>`;
 }
 
+// How long a job has been open: 0-3 days green, 4-6 days yellow, 7+ days red.
+function jobAge(job) {
+  const days = Math.max(0, Math.round((new Date(todayStr()) - new Date(job.date)) / 86400000));
+  return { days, level: days >= 7 ? 'red' : days >= 4 ? 'yellow' : 'green' };
+}
+
 function jobCard(job) {
   const pct = Math.round(job.doneCount / job.stages.length * 100);
   const balance = (Number(job.amount) || 0) - job.deposit;
@@ -573,7 +579,8 @@ function jobCard(job) {
         ${s.options.map(o => `<option${job[s.key] === o ? ' selected' : ''}>${o}</option>`).join('')}
       </select>
     </label>`).join('');
-  return `<div class="job${job.complete ? ' complete' : ''}">
+  const age = jobAge(job);
+  return `<div class="job${job.complete ? ' complete' : ` age-${age.level}`}">
     <div class="job-head">
       <div>
         <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}` : ''}
@@ -583,6 +590,7 @@ function jobCard(job) {
       </div>
       <div class="job-status">
         ${job.complete ? '<span class="badge green">Completed</span>' : `<span class="badge navy">${job.current.label}</span>`}
+        ${job.complete ? '' : `<span class="badge age ${age.level}">${age.days === 0 ? 'New today' : `Day ${age.days}`}</span>`}
         ${dueLabel(job)}
       </div>
     </div>

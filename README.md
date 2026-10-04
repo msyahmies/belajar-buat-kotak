@@ -45,6 +45,7 @@ After staff save a key in, the app opens the **Jobs** tab.
 - A job is **complete** once it is sent by post (or collected)
 - Top cards show active, overdue, completed and waiting-deposit jobs, plus how many jobs are at each step
 - Jobs are sorted by expected delivery date, with **Due in X days** / **Overdue** badges
+- Each open job is coloured by how long ago it came in: **green** for 0–3 days, **yellow** for 4–6 days, **red** for 7 days or more
 
 ## Expenses & Profit/Loss (Expenses tab)
 
