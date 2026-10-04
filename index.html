@@ -336,6 +336,21 @@
         <p id="expense-msg" class="msg"></p>
       </form>
 
+      <h2>Ads Performance <span id="ads-month" class="muted"></span></h2>
+      <p class="muted">Key in your ad spend every day above, with category <b>Advertising / Ads</b>. Leads come from the Leads tab and purchases are the orders keyed in. <button type="button" id="ads-add" class="secondary">+ Add Ads Spend</button></p>
+      <div class="cards key">
+        <div class="card"><span>Ad Spend</span><strong id="ads-spend">RM 0.00</strong><small id="ads-spend-sub"></small></div>
+        <div class="card"><span>Cost per Lead</span><strong id="ads-cpl">-</strong><small id="ads-cpl-sub"></small></div>
+        <div class="card"><span>Cost per Purchase</span><strong id="ads-cpp">-</strong><small id="ads-cpp-sub"></small></div>
+        <div class="card" id="ads-roas-card"><span>ROAS</span><strong id="ads-roas">-</strong><small id="ads-roas-sub"></small></div>
+      </div>
+      <div class="table-wrap">
+        <table id="t-ads">
+          <thead><tr><th>Date</th><th class="num">Ad Spend</th><th class="num">Leads</th><th class="num">Purchases</th><th class="num">Sales</th><th class="num">Cost/Lead</th><th class="num">Cost/Purchase</th><th class="num">ROAS</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
       <div class="split">
         <div>
           <h2>Expenses by Category (this month)</h2>

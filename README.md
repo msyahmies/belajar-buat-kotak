@@ -73,6 +73,15 @@ After staff save a key in, the app opens the **Jobs** tab.
 - **Monthly profit/loss** = month's sales − all month's expenses (green = profit, red = loss)
 - **Daily profit/loss** = day's sales − that day's daily expenses − (monthly overhead ÷ days in month)
 
+### Ads performance (Expenses tab)
+
+- Key in ad spend every day as an expense with category **Advertising / Ads** (the **+ Add Ads Spend** button fills it in for you)
+- **Cost per lead** = ad spend ÷ leads in (from the Leads tab)
+- **Cost per purchase** = ad spend ÷ orders keyed in
+- **ROAS** = sales ÷ ad spend (e.g. 5.00x means RM5 sales for every RM1 of ads; below 1x is shown in red)
+- Shown for the month and for the selected day, plus a day-by-day table
+- If ads are keyed in daily here, leave **Advertising** in the Overhead tab at 0 so it isn't counted twice
+
 ## Overhead & Break-even (Overhead tab)
 
 - Fill in your fixed monthly costs once: shop rent, staff salary, electricity, shop expenses, advertising, your own salary, plus any other costs. They apply to every month

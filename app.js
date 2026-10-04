@@ -58,7 +58,7 @@ const OVERHEAD_FIELDS = [
   { key: 'statutory', label: 'EPF (KWSP) + SOCSO/EIS' },
   { key: 'electric', label: 'Electricity' },
   { key: 'shop', label: 'Shop expenses' },
-  { key: 'ads', label: 'Advertising' },
+  { key: 'ads', label: 'Advertising (leave 0 if keyed daily in Expenses)' },
   { key: 'owner', label: 'Your own salary' },
 ];
 const STATUTORY_RATE = 0.13 + 0.0125; // employer EPF 13% + SOCSO/EIS ~1.25%
@@ -658,6 +658,8 @@ function renderExpenses() {
   $('#p-day-sub').textContent = `Sales ${rm(daySales)} − expenses ${rm(dayCost)} − overhead ${rm(overheadPerDay)}/day`;
   setProfitCard($('#p-day-card'), dayProfit);
 
+  renderAds(date, monExp);
+
   const byCat = {};
   monExp.forEach(x => byCat[x.category] = (byCat[x.category] || 0) + (Number(x.amount) || 0));
   const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
@@ -674,6 +676,49 @@ function renderExpenses() {
         <td><button class="danger" data-del-exp="${esc(x.id)}">Delete</button></td>
       </tr>`).join('')
     : '<tr><td colspan="7" class="muted">No expenses for this month.</td></tr>';
+}
+
+// ---------- Ads performance ----------
+// Spend = expenses in the ads category. Leads come from the Leads tab, purchases are order rows.
+
+const ADS_CATEGORY = 'Advertising / Ads';
+const roas = (sales, spend) => spend ? (sales / spend).toFixed(2) + 'x' : '-';
+const perUnit = (spend, n) => spend && n ? rm(spend / n) : '-';
+
+function adsStats(spendList, entryList) {
+  const s = summarize(entryList);
+  return { spend: sumAmount(spendList), leads: s.leads, orders: entryList.reduce((t, e) => t + e.lines.length, 0), sales: s.sales };
+}
+
+function renderAds(date, monExp) {
+  const month = date.slice(0, 7);
+  const adsExp = monExp.filter(x => x.category === ADS_CATEGORY);
+  const monEntries = entries.filter(e => e.date.startsWith(month));
+  const mon = adsStats(adsExp, monEntries);
+  const day = adsStats(adsExp.filter(x => x.date === date), monEntries.filter(e => e.date === date));
+
+  $('#ads-month').textContent = `(${new Date(month + '-01T00:00').toLocaleDateString('en-MY', { month: 'long', year: 'numeric' })})`;
+  $('#ads-spend').textContent = rm(mon.spend);
+  $('#ads-spend-sub').textContent = `Today ${rm(day.spend)}`;
+  $('#ads-cpl').textContent = perUnit(mon.spend, mon.leads);
+  $('#ads-cpl-sub').textContent = `${mon.leads} leads · today ${perUnit(day.spend, day.leads)}`;
+  $('#ads-cpp').textContent = perUnit(mon.spend, mon.orders);
+  $('#ads-cpp-sub').textContent = `${mon.orders} purchases · today ${perUnit(day.spend, day.orders)}`;
+  $('#ads-roas').textContent = roas(mon.sales, mon.spend);
+  $('#ads-roas-sub').textContent = `Sales ${rm(mon.sales)} · today ${roas(day.sales, day.spend)}`;
+  // Below 1x the ads cost more than the sales they brought in.
+  const card = $('#ads-roas-card');
+  card.classList.toggle('c-green', mon.spend > 0 && mon.sales >= mon.spend);
+  card.classList.toggle('c-red', mon.spend > 0 && mon.sales < mon.spend);
+
+  const days = [...new Set([...adsExp.map(x => x.date), ...monEntries.map(e => e.date)])].sort().reverse();
+  const rows = days.map(d => [d, adsStats(adsExp.filter(x => x.date === d), monEntries.filter(e => e.date === d))])
+    .filter(([, r]) => r.spend || r.leads || r.orders);
+  $('#t-ads tbody').innerHTML = rows.length
+    ? rows.map(([d, r]) => `<tr><td>${d}</td><td class="num">${rm(r.spend)}</td><td class="num">${r.leads}</td><td class="num">${r.orders}</td>
+        <td class="num">${rm(r.sales)}</td><td class="num">${perUnit(r.spend, r.leads)}</td><td class="num">${perUnit(r.spend, r.orders)}</td>
+        <td class="num${r.spend && r.sales < r.spend ? ' neg' : ''}">${roas(r.sales, r.spend)}</td></tr>`).join('')
+    : '<tr><td colspan="8" class="muted">No ad spend, leads or orders this month.</td></tr>';
 }
 
 async function onSubmitExpense(ev) {
@@ -1230,6 +1275,14 @@ $('#oh-items').addEventListener('click', ev => { if (ev.target.closest('.remove'
 $('#overhead-form').addEventListener('submit', onSubmitOverhead);
 $('#exp-date').value = todayStr();
 $('#exp-date').addEventListener('change', renderExpenses);
+$('#ads-add').addEventListener('click', () => {
+  const f = $('#expense-form');
+  f.category.value = ADS_CATEGORY;
+  f.kind.value = 'harian';
+  f.date.value = $('#exp-date').value || todayStr();
+  f.scrollIntoView({ behavior: 'smooth' });
+  f.amount.focus({ preventScroll: true });
+});
 $('#expense-form').date.value = todayStr();
 $('#expense-form').category.innerHTML =
   `<optgroup label="Operation cost">${OPERATION_COSTS.map(c => `<option>${c}</option>`).join('')}</optgroup>`
