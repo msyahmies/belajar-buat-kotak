@@ -27,6 +27,7 @@
       <button data-tab="history">History</button>
       <button data-tab="expenses">Expenses</button>
       <button data-tab="overhead">Overhead</button>
+      <button data-tab="reports">Reports</button>
       <button data-tab="leads">Leads</button>
       <button data-tab="settings">Settings</button>
     </nav>
@@ -157,6 +158,76 @@
           <thead><tr><th>Date</th><th class="num">Pcs</th><th class="num">Sales</th><th>Details</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- REPORTS -->
+    <section id="tab-reports" class="tab">
+      <div class="report-controls">
+        <div class="seg" id="rep-mode">
+          <button type="button" data-mode="day">Daily</button>
+          <button type="button" data-mode="week">Weekly</button>
+          <button type="button" data-mode="month" class="on">Monthly</button>
+          <button type="button" data-mode="year">Yearly</button>
+          <button type="button" data-mode="custom">Custom</button>
+        </div>
+        <div class="row">
+          <label id="rep-anchor-wrap">Date <input type="date" id="rep-anchor"></label>
+          <label id="rep-from-wrap" hidden>From <input type="date" id="rep-from"></label>
+          <label id="rep-to-wrap" hidden>To <input type="date" id="rep-to"></label>
+          <div class="btn-row">
+            <button type="button" id="rep-csv" class="secondary">Download Excel (CSV)</button>
+            <button type="button" id="rep-print" class="secondary">Print / Save PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="report">
+        <h2 class="report-title" id="rep-title"></h2>
+
+        <div class="card hero" id="rep-net-card">
+          <span id="rep-net-label">Net Profit</span>
+          <strong id="rep-net">RM 0.00</strong>
+          <small id="rep-net-sub"></small>
+        </div>
+
+        <div class="cards key">
+          <div class="card c-green"><span>Sales</span><strong id="rep-sales">RM 0.00</strong><small id="rep-sales-sub"></small></div>
+          <div class="card c-yellow"><span>Total Costs</span><strong id="rep-cost">RM 0.00</strong><small id="rep-cost-sub"></small></div>
+          <div class="card"><span>Deposits / Balance Unpaid</span><strong id="rep-deposit">RM 0.00</strong><small id="rep-owed"></small></div>
+        </div>
+
+        <div class="cards" style="margin-top:12px">
+          <div class="card"><span>Orders</span><strong id="rep-orders">0</strong></div>
+          <div class="card"><span>Shirts Sold</span><strong id="rep-pcs">0</strong></div>
+          <div class="card"><span>Leads In / Converted</span><strong id="rep-leads">0 / 0</strong></div>
+          <div class="card"><span>Conversion Rate</span><strong id="rep-rate">-</strong></div>
+        </div>
+
+        <h2 id="rep-break-title">Breakdown</h2>
+        <div class="table-wrap">
+          <table id="t-rep-period"><thead><tr><th>Period</th><th class="num">Orders</th><th class="num">Pcs</th><th class="num">Sales</th><th class="num">Costs</th><th class="num">Profit</th></tr></thead><tbody></tbody></table>
+        </div>
+
+        <div class="split">
+          <div>
+            <h2>Shirt Category</h2>
+            <table id="t-rep-cat"><thead><tr><th>Category</th><th class="num">Pcs</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div>
+            <h2>Printing Type</h2>
+            <table id="t-rep-print"><thead><tr><th>Printing</th><th class="num">Pcs</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div>
+            <h2>Lead Source</h2>
+            <table id="t-rep-source"><thead><tr><th>Source</th><th class="num">Orders</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div>
+            <h2>Costs</h2>
+            <table id="t-rep-costs"><thead><tr><th>Item</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <p class="muted" id="rep-note"></p>
       </div>
     </section>
 

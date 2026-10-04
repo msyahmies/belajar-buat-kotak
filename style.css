@@ -49,6 +49,22 @@ body.locked [data-del] { display: none; }
 label.check { flex-direction: row; align-items: flex-start; gap: 8px; font-weight: 500; }
 label.check input { width: auto; margin-top: 3px; }
 #pin-form { max-width: 520px; }
+.report-controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { background: var(--surface); color: var(--accent); border-color: var(--border); padding: 8px 14px; }
+.seg button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.report-title { font-size: 1.15rem; margin-top: 8px; }
+#t-rep-period tr.total td { font-weight: 700; border-top: 2px solid var(--navy); }
+td.neg { color: var(--red); }
+@media print {
+  header, .report-controls, #pin-modal, #edit-modal { display: none !important; }
+  body { background: #fff; }
+  main { max-width: none; padding: 0; }
+  .tab { display: none !important; }
+  #tab-reports { display: block !important; }
+  .card, table { break-inside: avoid; }
+  .card.c-green, .card.c-red, .card.c-yellow, th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 .modal-box.modal-wide { max-width: 560px; max-height: 90vh; overflow-y: auto; }
 .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
 .edit-grid .wide { grid-column: 1 / -1; }

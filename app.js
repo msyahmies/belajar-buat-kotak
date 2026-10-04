@@ -51,7 +51,7 @@ const LS_OVERHEAD = 'sales.overhead';
 const LS_PIN = 'sales.pinHash';
 const LS_KEEP_UNLOCKED = 'sales.keepUnlocked';
 const SS_UNLOCKED = 'sales.unlocked';
-const OWNER_TABS = ['expenses', 'overhead', 'settings'];
+const OWNER_TABS = ['expenses', 'overhead', 'reports', 'settings'];
 const OVERHEAD_FIELDS = [
   { key: 'rent', label: 'Shop rent' },
   { key: 'salary', label: 'Staff salary' },
@@ -240,6 +240,138 @@ function renderDashboard() {
     `<tr><td>${esc(k)}</td><td class="num">${v.pcs}</td><td class="num">${rm(v.sales)}</td></tr>`).join('');
   $('#t-category tbody').innerHTML = rows(mon.byCategory);
   $('#t-printing tbody').innerHTML = rows(mon.byPrinting);
+}
+
+// ---------- Reports ----------
+
+let reportMode = 'month';
+
+const addDays = (d, n) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+const daysInMonthOf = d => new Date(Number(d.slice(0, 4)), Number(d.slice(5, 7)), 0).getDate();
+const fmtDate = (d, opts) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-MY', { timeZone: 'UTC', ...opts });
+
+function reportRange() {
+  const a = $('#rep-anchor').value || todayStr();
+  if (reportMode === 'day') return { from: a, to: a, title: fmtDate(a, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) };
+  if (reportMode === 'week') {
+    const dow = (new Date(a + 'T00:00:00Z').getUTCDay() + 6) % 7; // Monday = 0
+    const from = addDays(a, -dow), to = addDays(from, 6);
+    return { from, to, title: `Week ${fmtDate(from, { day: 'numeric', month: 'short' })} – ${fmtDate(to, { day: 'numeric', month: 'short', year: 'numeric' })}` };
+  }
+  if (reportMode === 'month') {
+    const from = a.slice(0, 7) + '-01';
+    return { from, to: a.slice(0, 7) + '-' + String(daysInMonthOf(a)).padStart(2, '0'), title: fmtDate(from, { month: 'long', year: 'numeric' }) };
+  }
+  if (reportMode === 'year') return { from: a.slice(0, 4) + '-01-01', to: a.slice(0, 4) + '-12-31', title: 'Year ' + a.slice(0, 4) };
+  let from = $('#rep-from').value || todayStr(), to = $('#rep-to').value || from;
+  if (to < from) [from, to] = [to, from];
+  return { from, to, title: `${fmtDate(from, { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(to, { day: 'numeric', month: 'short', year: 'numeric' })}` };
+}
+
+// Costs for one day: daily expenses that day + that day's share of monthly expenses and of the overhead.
+function buildReport() {
+  const { from, to, title } = reportRange();
+  const inRange = d => d >= from && d <= to;
+  const overheadTotal = sumAmount(overheadLines());
+  const monthly = expenses.filter(x => x.kind === 'bulanan');
+  const days = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) days.push(d);
+  const byMonth = days.length > 62;
+  const periods = {};
+  const costs = { 'Operation costs': 0, 'Monthly expenses (share)': 0, 'Overhead (share)': 0 };
+  const costByCat = {};
+
+  const today = todayStr();
+  for (const d of days) {
+    const key = byMonth ? d.slice(0, 7) : d;
+    const p = (periods[key] ??= { orders: 0, pcs: 0, sales: 0, costs: 0 });
+    if (d > today) continue; // fixed costs are only counted for days that have happened
+    const dim = daysInMonthOf(d);
+    const share = sumAmount(monthly.filter(x => x.date.slice(0, 7) === d.slice(0, 7))) / dim;
+    const oh = overheadTotal / dim;
+    p.costs += share + oh;
+    costs['Monthly expenses (share)'] += share;
+    costs['Overhead (share)'] += oh;
+  }
+  const list = entries.filter(e => inRange(e.date));
+  for (const e of list) {
+    const p = periods[byMonth ? e.date.slice(0, 7) : e.date];
+    p.orders += e.lines.length;
+    e.lines.forEach(l => { p.pcs += Number(l.qty) || 0; p.sales += Number(l.amount) || 0; });
+  }
+  for (const x of expenses.filter(x => x.kind !== 'bulanan' && inRange(x.date))) {
+    periods[byMonth ? x.date.slice(0, 7) : x.date].costs += Number(x.amount) || 0;
+    costs['Operation costs'] += Number(x.amount) || 0;
+    costByCat[x.category] = (costByCat[x.category] || 0) + (Number(x.amount) || 0);
+  }
+  const sum = summarize(list);
+  const totalCost = Object.values(costs).reduce((a, b) => a + b, 0);
+  return { from, to, title, byMonth, periods, sum, list, costs, costByCat, totalCost, net: sum.sales - totalCost,
+    orders: list.reduce((n, e) => n + e.lines.length, 0) };
+}
+
+function renderReport() {
+  const r = buildReport();
+  const periodLabel = k => (r.byMonth ? fmtDate(k + '-01', { month: 'short', year: 'numeric' }) : fmtDate(k, { weekday: 'short', day: 'numeric', month: 'short' }));
+  $('#rep-title').textContent = r.title;
+  $('#rep-net-label').textContent = r.net >= 0 ? 'Net Profit' : 'Net Loss';
+  $('#rep-net').textContent = rm(Math.abs(r.net));
+  $('#rep-net-sub').textContent = `Sales ${rm(r.sum.sales)} − costs ${rm(r.totalCost)}` + (r.sum.sales ? ` · margin ${(r.net / r.sum.sales * 100).toFixed(1)}%` : '');
+  setProfitCard($('#rep-net-card'), r.net);
+  $('#rep-sales').textContent = rm(r.sum.sales);
+  $('#rep-sales-sub').textContent = `${r.orders} orders`;
+  $('#rep-cost').textContent = rm(r.totalCost);
+  $('#rep-cost-sub').textContent = `Operation ${rm(r.costs['Operation costs'])} · overhead ${rm(r.costs['Overhead (share)'] + r.costs['Monthly expenses (share)'])}`;
+  $('#rep-deposit').textContent = rm(r.sum.deposit);
+  $('#rep-owed').textContent = `Balance unpaid ${rm(r.sum.sales - r.sum.deposit)}`;
+  $('#rep-orders').textContent = r.orders;
+  $('#rep-pcs').textContent = r.sum.pcs;
+  $('#rep-leads').textContent = `${r.sum.leads} / ${r.sum.converted}`;
+  $('#rep-rate').textContent = convRate(r.sum);
+
+  $('#rep-break-title').textContent = r.byMonth ? 'By Month' : 'By Day';
+  const rows = Object.entries(r.periods);
+  const tot = rows.reduce((t, [, v]) => ({ orders: t.orders + v.orders, pcs: t.pcs + v.pcs, sales: t.sales + v.sales, costs: t.costs + v.costs }), { orders: 0, pcs: 0, sales: 0, costs: 0 });
+  const row = (label, v, cls = '') => `<tr class="${cls}"><td>${label}</td><td class="num">${v.orders}</td><td class="num">${v.pcs}</td><td class="num">${rm(v.sales)}</td><td class="num">${rm(v.costs)}</td><td class="num${v.sales - v.costs < 0 ? ' neg' : ''}">${v.sales - v.costs < 0 ? '−' : ''}${rm(Math.abs(v.sales - v.costs))}</td></tr>`;
+  $('#t-rep-period tbody').innerHTML = rows.map(([k, v]) => row(periodLabel(k), v)).join('') + row('Total', tot, 'total');
+
+  const pcsRows = obj => Object.entries(obj).filter(([, v]) => v.pcs || v.sales)
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v.pcs}</td><td class="num">${rm(v.sales)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">No sales.</td></tr>';
+  $('#t-rep-cat tbody').innerHTML = pcsRows(r.sum.byCategory);
+  $('#t-rep-print tbody').innerHTML = pcsRows(r.sum.byPrinting);
+  $('#t-rep-source tbody').innerHTML = Object.entries(r.sum.bySource).sort((a, b) => b[1].sales - a[1].sales)
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v.orders}</td><td class="num">${rm(v.sales)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">No orders.</td></tr>';
+  const costRows = Object.entries(r.costByCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, v])
+    .concat([['Monthly expenses (share)', r.costs['Monthly expenses (share)']], ['Overhead (share)', r.costs['Overhead (share)']]]).filter(([, v]) => v);
+  $('#t-rep-costs tbody').innerHTML = costRows.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${rm(v)}</td></tr>`).join('')
+    + `<tr><td><b>Total</b></td><td class="num"><b>${rm(r.totalCost)}</b></td></tr>`;
+  $('#rep-note').textContent = 'Overhead is spread evenly over each day of the month (amounts from the Overhead tab) and only counted up to today.';
+}
+
+function setReportMode(mode) {
+  reportMode = mode;
+  $$('#rep-mode button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  $('#rep-anchor-wrap').hidden = mode === 'custom';
+  $('#rep-from-wrap').hidden = $('#rep-to-wrap').hidden = mode !== 'custom';
+  renderReport();
+}
+
+function exportReportCsv() {
+  const r = buildReport();
+  const out = [['Report', r.title], ['From', r.from], ['To', r.to], [],
+    ['Sales (RM)', r.sum.sales.toFixed(2)], ['Total costs (RM)', r.totalCost.toFixed(2)], ['Net profit (RM)', r.net.toFixed(2)],
+    ['Orders', r.orders], ['Shirts sold', r.sum.pcs], ['Deposits (RM)', r.sum.deposit.toFixed(2)], ['Balance unpaid (RM)', (r.sum.sales - r.sum.deposit).toFixed(2)],
+    ['Leads in', r.sum.leads], ['Leads converted', r.sum.converted], ['Conversion rate', convRate(r.sum)], [],
+    [r.byMonth ? 'Month' : 'Date', 'Orders', 'Pcs', 'Sales (RM)', 'Costs (RM)', 'Profit (RM)']];
+  Object.entries(r.periods).forEach(([k, v]) => out.push([k, v.orders, v.pcs, v.sales.toFixed(2), v.costs.toFixed(2), (v.sales - v.costs).toFixed(2)]));
+  out.push([], ['Order date', 'Customer', 'Phone No.', 'Category', 'Printing', 'Qty', 'Total (RM)', 'Deposit (RM)', 'Lead source']);
+  r.list.forEach(e => e.lines.forEach((l, i) => out.push([e.date, l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, lineDeposit(e, i), l.source || ''])));
+  const csv = out.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }));
+  a.download = `report-${r.from}-to-${r.to}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ---------- Leads tab ----------
@@ -1051,6 +1183,7 @@ function renderAll() {
   renderJobs();
   renderOverhead();
   renderLeads();
+  renderReport();
   if (document.activeElement?.form !== $('#leads-form')) fillLeadsForm();
   if (!$('#tab-overhead').classList.contains('active')) fillOverheadForm();
   const f = $('#settings-form');
@@ -1062,7 +1195,7 @@ function showTab(name) {
   if (OWNER_TABS.includes(name) && !isUnlocked()) { askPin(name); return; }
   $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $$('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
-  if (['dashboard', 'expenses', 'jobs', 'overhead', 'leads'].includes(name) && settings.syncUrl) pull();
+  if (['dashboard', 'expenses', 'jobs', 'overhead', 'leads', 'reports'].includes(name) && settings.syncUrl) pull();
 }
 
 $$('nav button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -1081,6 +1214,13 @@ $('#leads-form').date.value = todayStr();
 $('#entry-form').addEventListener('submit', onSubmitEntry);
 $('#settings-form').addEventListener('submit', onSubmitSettings);
 $('#export-csv').addEventListener('click', exportCsv);
+$('#rep-anchor').value = todayStr();
+$('#rep-from').value = todayStr().slice(0, 8) + '01';
+$('#rep-to').value = todayStr();
+$('#rep-mode').addEventListener('click', ev => { const m = ev.target.dataset?.mode; if (m) setReportMode(m); });
+['#rep-anchor', '#rep-from', '#rep-to'].forEach(id => $(id).addEventListener('change', renderReport));
+$('#rep-csv').addEventListener('click', exportReportCsv);
+$('#rep-print').addEventListener('click', () => window.print());
 $('#oh-date').value = todayStr();
 $('#oh-date').addEventListener('change', renderOverhead);
 $('#oh-add').addEventListener('click', () => addOverheadItem());
