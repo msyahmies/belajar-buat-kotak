@@ -713,7 +713,7 @@ function renderExpenses() {
 }
 
 // ---------- Ads performance ----------
-// Spend = expenses in the ads category. Leads come from the Leads tab, purchases are order rows.
+// Spend = expenses in the ads category. Leads come from the Ads tab form, purchases are order rows.
 
 const ADS_CATEGORY = 'Advertising / Ads';
 const roas = (sales, spend) => spend ? (sales / spend).toFixed(2) + 'x' : '-';
