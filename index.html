@@ -27,6 +27,7 @@
       <button data-tab="history">History</button>
       <button data-tab="expenses">Expenses</button>
       <button data-tab="overhead">Overhead</button>
+      <button data-tab="leads">Leads</button>
       <button data-tab="settings">Settings</button>
     </nav>
   </header>
@@ -53,10 +54,8 @@
 
       <h2>Today</h2>
       <div class="cards">
+        <div class="card"><span>Orders</span><strong id="d-orders">0</strong></div>
         <div class="card"><span>Shirts Sold</span><strong id="d-pcs">0</strong></div>
-        <div class="card"><span>Leads In</span><strong id="d-leads">0</strong></div>
-        <div class="card"><span>Leads Converted</span><strong id="d-conv">0</strong></div>
-        <div class="card"><span>Conversion Rate</span><strong id="d-rate">-</strong></div>
       </div>
 
       <h2>Target for <span id="m-label"></span></h2>
@@ -68,11 +67,8 @@
       <div class="progress"><div id="m-bar"></div></div>
       <p class="muted" id="m-pct"></p>
 
-      <h2>Leads &amp; Payments (this month)</h2>
+      <h2>Payments (this month)</h2>
       <div class="cards">
-        <div class="card"><span>Leads In</span><strong id="m-leads">0</strong></div>
-        <div class="card"><span>Leads Converted</span><strong id="m-conv">0</strong></div>
-        <div class="card"><span>Conversion Rate</span><strong id="m-rate">-</strong></div>
         <div class="card"><span>Deposits Received</span><strong id="m-deposit">RM 0.00</strong></div>
         <div class="card highlight"><span>Balance Unpaid</span><strong id="m-owed">RM 0.00</strong></div>
       </div>
@@ -85,10 +81,6 @@
         <div>
           <h2>Printing Type (this month)</h2>
           <table id="t-printing"><thead><tr><th>Printing</th><th class="num">Pcs</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
-        </div>
-        <div>
-          <h2>Lead Source (this month)</h2>
-          <table id="t-source"><thead><tr><th>Source</th><th class="num">Orders</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
         </div>
       </div>
     </section>
@@ -109,19 +101,6 @@
         </div>
         <button type="submit">Save Orders</button>
         <p id="form-msg" class="msg"></p>
-      </form>
-
-      <h2>Daily Leads</h2>
-      <form id="leads-form" class="panel">
-        <p class="muted">Enter once a day. Saving again for the same date replaces that day's numbers.</p>
-        <div class="grid">
-          <label>Date <input type="date" name="date" required></label>
-          <label>Total Leads In <input type="number" name="leads" min="0" value="0" required></label>
-          <label>Leads Converted <input type="number" name="converted" min="0" value="0" required></label>
-          <label>% Leads Converted <input type="text" name="convRate" readonly tabindex="-1" value="-"></label>
-        </div>
-        <button type="submit">Save Leads</button>
-        <p id="leads-msg" class="msg"></p>
       </form>
 
       <template id="line-tpl">
@@ -178,6 +157,48 @@
           <thead><tr><th>Date</th><th class="num">Pcs</th><th class="num">Sales</th><th>Details</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- LEADS -->
+    <section id="tab-leads" class="tab">
+      <h2 style="margin-top:0">Daily Leads</h2>
+      <form id="leads-form" class="panel">
+        <p class="muted">Enter once a day. Saving again for the same date replaces that day's numbers.</p>
+        <div class="grid">
+          <label>Date <input type="date" name="date" required></label>
+          <label>Total Leads In <input type="number" name="leads" min="0" value="0" required></label>
+          <label>Leads Converted <input type="number" name="converted" min="0" value="0" required></label>
+          <label>% Leads Converted <input type="text" name="convRate" readonly tabindex="-1" value="-"></label>
+        </div>
+        <button type="submit">Save Leads</button>
+        <p id="leads-msg" class="msg"></p>
+      </form>
+
+
+      <h2>Selected Day</h2>
+      <div class="cards">
+        <div class="card"><span>Leads In</span><strong id="ld-leads">0</strong></div>
+        <div class="card"><span>Leads Converted</span><strong id="ld-conv">0</strong></div>
+        <div class="card"><span>Conversion Rate</span><strong id="ld-rate">-</strong></div>
+      </div>
+
+      <h2>This Month (<span id="lm-label"></span>)</h2>
+      <div class="cards">
+        <div class="card"><span>Leads In</span><strong id="lm-leads">0</strong></div>
+        <div class="card"><span>Leads Converted</span><strong id="lm-conv">0</strong></div>
+        <div class="card c-green"><span>Conversion Rate</span><strong id="lm-rate">-</strong></div>
+      </div>
+
+      <div class="split">
+        <div>
+          <h2>Daily Leads (this month)</h2>
+          <table id="t-leads"><thead><tr><th>Date</th><th class="num">In</th><th class="num">Converted</th><th class="num">%</th><th></th></tr></thead><tbody></tbody></table>
+        </div>
+        <div>
+          <h2>Lead Source of Orders (this month)</h2>
+          <table id="t-source"><thead><tr><th>Source</th><th class="num">Orders</th><th class="num">RM</th></tr></thead><tbody></tbody></table>
+        </div>
       </div>
     </section>
 

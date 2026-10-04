@@ -193,9 +193,7 @@ function renderDashboard() {
 
   const day = summarize(entries.filter(e => e.date === date));
   $('#d-pcs').textContent = day.pcs;
-  $('#d-leads').textContent = day.leads;
-  $('#d-conv').textContent = day.converted;
-  $('#d-rate').textContent = convRate(day);
+  $('#d-orders').textContent = entries.filter(e => e.date === date).reduce((n, e) => n + e.lines.length, 0);
 
   const mon = summarize(entries.filter(e => e.date.startsWith(month)));
   const target = Number(settings.target) || 0;
@@ -208,9 +206,6 @@ function renderDashboard() {
   $('#m-label').textContent = new Date(y, m - 1, 1).toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
   $('#m-target').textContent = target ? rm(target) : 'Not set';
   $('#m-sales').textContent = rm(mon.sales);
-  $('#m-leads').textContent = mon.leads;
-  $('#m-conv').textContent = mon.converted;
-  $('#m-rate').textContent = convRate(mon);
   $('#m-deposit').textContent = rm(mon.deposit);
   $('#m-owed').textContent = rm(mon.sales - mon.deposit);
   $('#m-days').textContent = daysLeft;
@@ -224,7 +219,7 @@ function renderDashboard() {
   const ratio = dailyTarget ? day.sales / dailyTarget : 1;
 
   $('#d-sales').textContent = rm(day.sales);
-  $('#d-sales-sub').textContent = `${day.pcs} pcs · ${day.converted} leads converted`
+  $('#d-sales-sub').textContent = `${day.pcs} pcs`
     + (dailyTarget ? ` · ${Math.round(ratio * 100)}% of today's target` : '');
   $('#d-target').textContent = target ? rm(dailyTarget) : '-';
   $('#d-target-sub').textContent = target ? `${daysLeft} days left this month` : '';
@@ -245,6 +240,40 @@ function renderDashboard() {
     `<tr><td>${esc(k)}</td><td class="num">${v.pcs}</td><td class="num">${rm(v.sales)}</td></tr>`).join('');
   $('#t-category tbody').innerHTML = rows(mon.byCategory);
   $('#t-printing tbody').innerHTML = rows(mon.byPrinting);
+}
+
+// ---------- Leads tab ----------
+
+function renderLeads() {
+  const date = $('#leads-form').date.value || todayStr();
+  const month = date.slice(0, 7);
+  const [y, m] = month.split('-').map(Number);
+  const day = summarize(entries.filter(e => e.date === date));
+  const monList = entries.filter(e => e.date.startsWith(month));
+  const mon = summarize(monList);
+
+  $('#ld-leads').textContent = day.leads;
+  $('#ld-conv').textContent = day.converted;
+  $('#ld-rate').textContent = convRate(day);
+  $('#lm-label').textContent = new Date(y, m - 1, 1).toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
+  $('#lm-leads').textContent = mon.leads;
+  $('#lm-conv').textContent = mon.converted;
+  $('#lm-rate').textContent = convRate(mon);
+
+  // One row per day that has leads (older key-ins may carry leads together with orders).
+  const byDay = {};
+  monList.filter(e => Number(e.leads) || Number(e.converted)).forEach(e => {
+    const d = (byDay[e.date] ??= { leads: 0, converted: 0, ids: [] });
+    d.leads += Number(e.leads) || 0;
+    d.converted += Number(e.converted) || 0;
+    if (isLeadsOnly(e)) d.ids.push(e.id);
+  });
+  const days = Object.entries(byDay).sort((a, b) => b[0].localeCompare(a[0]));
+  $('#t-leads tbody').innerHTML = days.length
+    ? days.map(([d, v]) => `<tr><td>${d}</td><td class="num">${v.leads}</td><td class="num">${v.converted}</td><td class="num">${convRate(v)}</td>
+        <td>${v.ids.map(id => `<button class="danger" data-del="${esc(id)}">Delete</button>`).join('')}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="muted">No leads recorded this month.</td></tr>';
+
   const sources = Object.entries(mon.bySource).sort((a, b) => b[1].sales - a[1].sales);
   $('#t-source tbody').innerHTML = sources.length
     ? sources.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v.orders}</td><td class="num">${rm(v.sales)}</td></tr>`).join('')
@@ -1021,6 +1050,7 @@ function renderAll() {
   renderExpenses();
   renderJobs();
   renderOverhead();
+  renderLeads();
   if (document.activeElement?.form !== $('#leads-form')) fillLeadsForm();
   if (!$('#tab-overhead').classList.contains('active')) fillOverheadForm();
   const f = $('#settings-form');
@@ -1032,7 +1062,7 @@ function showTab(name) {
   if (OWNER_TABS.includes(name) && !isUnlocked()) { askPin(name); return; }
   $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $$('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
-  if (['dashboard', 'expenses', 'jobs', 'overhead'].includes(name) && settings.syncUrl) pull();
+  if (['dashboard', 'expenses', 'jobs', 'overhead', 'leads'].includes(name) && settings.syncUrl) pull();
 }
 
 $$('nav button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -1044,7 +1074,8 @@ $('#add-line').addEventListener('click', () => { addLine(); updateFormTotal(); }
 $('#lines').addEventListener('input', updateFormTotal);
 $('#leads-form').leads.addEventListener('input', updateConvRate);
 $('#leads-form').converted.addEventListener('input', updateConvRate);
-$('#leads-form').date.addEventListener('change', fillLeadsForm);
+$('#leads-form').date.addEventListener('change', () => { fillLeadsForm(); renderLeads(); });
+$('#t-leads').addEventListener('click', ev => { const id = ev.target.dataset?.del; if (id) onDelete(id); });
 $('#leads-form').addEventListener('submit', onSubmitLeads);
 $('#leads-form').date.value = todayStr();
 $('#entry-form').addEventListener('submit', onSubmitEntry);

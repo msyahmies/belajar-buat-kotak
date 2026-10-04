@@ -16,21 +16,24 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
   - **Expected delivery** date
   - **Notes**
 
-**Daily Leads** (a separate box in the Key In tab, saved on its own):
-- **Date**, **total leads in** and **leads converted**. **% leads converted** is calculated automatically
-- One record per date; saving again for the same date replaces it
-- Leads show on the Dashboard only, not in History
-
 ## What the Dashboard shows
 
 - **Today's sales** (large green card)
 - **Daily sales target** (yellow): remaining monthly target ÷ days left in the month
 - **Sales still needed today**: red below 2/3 of the daily target, yellow from 2/3, green once reached
 - **Sales still needed this month** (red)
-- Shirts sold, leads in, leads converted and conversion rate for the day and the month
+- Orders and shirts sold for the day
 - Deposits received and balance unpaid for the month
-- Breakdown by shirt category, printing type and lead source
+- Breakdown by shirt category and printing type
 - **History** tab: monthly list of sales (orders only, no leads), delete wrong records, download CSV (opens in Excel)
+
+## Leads (Leads tab)
+
+Everything about leads lives in its own tab, before Settings:
+- **Daily Leads** form: date, total leads in, leads converted; **% leads converted** is calculated automatically. One record per date; saving again for the same date replaces it
+- Leads, converted and conversion rate for the selected day and for the month
+- A list of each day's leads this month
+- **Lead source of orders**: how many orders and how much RM came from WhatsApp, Facebook, TikTok, etc.
 
 ## Job Status (Jobs tab)
 
