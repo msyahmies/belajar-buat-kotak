@@ -4,11 +4,9 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 
 ## What is recorded
 
-Each time staff key in:
-- **Date**
-- **Total leads in** and **leads converted** (leads that became orders). **% leads converted** is calculated automatically
+**Sales / Orders** (Key In tab):
+- **Order date** at the top (defaults to today, can be changed). Job age colours count from this date
 - One or more **sales rows** (one row per order), each with:
-  - **Order date** (defaults to today, can be changed). Job age colours count from this date
   - **Customer name** and **phone no.**
   - **Category**: Work Shirt / Family Day Shirt / Sports Shirt / Birthday Shirt
   - **Printing**: DTF / Sublimation
@@ -17,6 +15,10 @@ Each time staff key in:
   - **Lead source** (WhatsApp, Facebook, Instagram, TikTok, Walk-in, Referral, Returning Customer, Others)
   - **Expected delivery** date
   - **Notes**
+
+**Daily Leads** (a separate box in the Key In tab, saved on its own):
+- **Date**, **total leads in** and **leads converted**. **% leads converted** is calculated automatically
+- One record per date; saving again for the same date replaces it
 
 ## What the Dashboard shows
 

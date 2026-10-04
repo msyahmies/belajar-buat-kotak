@@ -258,7 +258,6 @@ function addLine() {
   $('[name=category]', node).innerHTML = CATEGORIES.map(c => `<option>${c}</option>`).join('');
   $('[name=printing]', node).innerHTML = PRINTINGS.map(p => `<option>${p}</option>`).join('');
   $('[name=source]', node).innerHTML = SOURCES.map(s => `<option>${s}</option>`).join('');
-  $('[name=orderDate]', node).value = todayStr(); // defaults to today; staff can change it
   $('.remove', node).addEventListener('click', () => {
     if ($$('#lines .line').length > 1) node.remove();
     updateFormTotal();
@@ -268,7 +267,6 @@ function addLine() {
 
 function readLines() {
   return $$('#lines .line').map(n => ({
-    orderDate: $('[name=orderDate]', n).value || todayStr(),
     customer: $('[name=customer]', n).value.trim(),
     phone: $('[name=phone]', n).value.trim(),
     category: $('[name=category]', n).value,
@@ -283,8 +281,56 @@ function readLines() {
 }
 
 function updateConvRate() {
-  const f = $('#entry-form');
+  const f = $('#leads-form');
   f.convRate.value = convRate({ leads: Number(f.leads.value) || 0, converted: Number(f.converted.value) || 0 });
+}
+
+// ---------- Daily leads (kept apart from sales) ----------
+// A leads record is a sale entry with no order rows; one per date.
+
+const isLeadsOnly = e => !e.lines.length;
+const leadsFor = date => entries.find(e => isLeadsOnly(e) && e.date === date);
+
+function fillLeadsForm() {
+  const f = $('#leads-form');
+  const rec = leadsFor(f.date.value);
+  f.leads.value = rec ? rec.leads : 0;
+  f.converted.value = rec ? rec.converted : 0;
+  $('#leads-msg').className = 'msg';
+  $('#leads-msg').textContent = rec ? `Already saved for this date: ${rec.leads} in, ${rec.converted} converted.` : '';
+  updateConvRate();
+}
+
+async function onSubmitLeads(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const msg = $('#leads-msg');
+  const existing = leadsFor(f.date.value);
+  const rec = {
+    id: existing ? existing.id : newId(),
+    date: f.date.value,
+    leads: Number(f.leads.value) || 0,
+    converted: Number(f.converted.value) || 0,
+    lines: [],
+    createdAt: existing ? existing.createdAt : new Date().toISOString(),
+  };
+  const btn = $('button[type=submit]', f);
+  btn.disabled = true;
+  try {
+    if (settings.syncUrl) await remote({ action: existing ? 'update' : 'add', entry: rec });
+    entries = existing ? entries.map(e => (e.id === rec.id ? rec : e)) : [...entries, rec];
+    save(LS_ENTRIES, entries);
+    renderAll();
+    msg.className = 'msg ok';
+    msg.textContent = `Saved leads for ${rec.date}: ${rec.leads} in, ${rec.converted} converted (${convRate(rec)}).`;
+  } catch (e) {
+    msg.className = 'msg err';
+    msg.textContent = /Invalid action/.test(e.message)
+      ? 'Not saved: update Code.gs in Google Sheet to the latest version first.'
+      : 'Save failed: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function updateFormTotal() {
@@ -306,7 +352,6 @@ function resetForm(keep) {
   $('#lines').innerHTML = '';
   addLine();
   updateFormTotal();
-  updateConvRate();
 }
 
 async function onSubmitEntry(ev) {
@@ -316,9 +361,9 @@ async function onSubmitEntry(ev) {
   const entry = {
     id: newId(),
     date: f.date.value,
-    leads: Number(f.leads.value) || 0,
-    converted: Number(f.converted.value) || 0,
-    lines: readLines(),
+    leads: 0,
+    converted: 0,
+    lines: readLines().map(l => ({ ...l, orderDate: f.date.value })),
     createdAt: new Date().toISOString(),
   };
 
@@ -330,7 +375,7 @@ async function onSubmitEntry(ev) {
     save(LS_ENTRIES, entries);
     msg.className = 'msg ok';
     msg.textContent = `Saved: ${rm(entryTotals(entry).sales)} for ${entry.date}`;
-    resetForm({ date: entry.date });
+    resetForm();
     renderAll();
     $('#job-filter').value = entry.lines.some(l => l.deposit > 0) ? 'active' : 'waiting';
     renderJobs();
@@ -373,7 +418,7 @@ function renderHistory() {
   }
   tbody.innerHTML = list.map(e => {
     const t = entryTotals(e);
-    const detail = e.lines.map((l, i) => lineDetail(l, lineDeposit(e, i))).join('<hr>');
+    const detail = isLeadsOnly(e) ? 'Daily leads' : e.lines.map((l, i) => lineDetail(l, lineDeposit(e, i))).join('<hr>');
     return `<tr>
       <td>${e.date}</td><td class="num">${e.leads || 0}</td><td class="num">${e.converted || 0}</td><td class="num">${convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 })}</td>
       <td class="num">${t.pcs}</td><td class="num">${rm(t.sales)}</td>
@@ -402,6 +447,7 @@ function exportCsv() {
   const rows = [header];
   // Phone is written as ="012..." so Excel keeps the leading 0.
   for (const e of monthEntries().reverse()) {
+    if (isLeadsOnly(e)) rows.push([e.date, '', e.leads || 0, e.converted || 0, convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 }), 'Daily leads', '', '', '', '', '', '', '', '', '', '']);
     e.lines.forEach((l, i) => rows.push([e.date, l.orderDate || e.date, i === 0 ? e.leads || 0 : 0, i === 0 ? e.converted || 0 : 0, i === 0 ? convRate({ leads: Number(e.leads) || 0, converted: Number(e.converted) || 0 }) : '', l.customer || '', l.phone ? `="${l.phone}"` : '', l.category, l.printing, l.qty, l.amount, lineDeposit(e, i), (Number(l.amount) || 0) - lineDeposit(e, i), l.source || '', l.delivery || '', l.notes || '']));
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
@@ -976,6 +1022,7 @@ function renderAll() {
   renderExpenses();
   renderJobs();
   renderOverhead();
+  if (document.activeElement?.form !== $('#leads-form')) fillLeadsForm();
   if (!$('#tab-overhead').classList.contains('active')) fillOverheadForm();
   const f = $('#settings-form');
   f.target.value = settings.target || '';
@@ -996,8 +1043,11 @@ $('#hist-month').value = todayStr().slice(0, 7);
 $('#hist-month').addEventListener('change', renderHistory);
 $('#add-line').addEventListener('click', () => { addLine(); updateFormTotal(); });
 $('#lines').addEventListener('input', updateFormTotal);
-$('#entry-form').leads.addEventListener('input', updateConvRate);
-$('#entry-form').converted.addEventListener('input', updateConvRate);
+$('#leads-form').leads.addEventListener('input', updateConvRate);
+$('#leads-form').converted.addEventListener('input', updateConvRate);
+$('#leads-form').date.addEventListener('change', fillLeadsForm);
+$('#leads-form').addEventListener('submit', onSubmitLeads);
+$('#leads-form').date.value = todayStr();
 $('#entry-form').addEventListener('submit', onSubmitEntry);
 $('#settings-form').addEventListener('submit', onSubmitSettings);
 $('#export-csv').addEventListener('click', exportCsv);

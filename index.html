@@ -95,15 +95,11 @@
 
     <!-- INPUT -->
     <section id="tab-input" class="tab">
-      <form id="entry-form">
+      <h2>Sales / Orders</h2>
+      <form id="entry-form" class="panel">
         <div class="grid">
-          <label>Date <input type="date" name="date" required></label>
-          <label>Total Leads In <input type="number" name="leads" min="0" value="0" required></label>
-          <label>Leads Converted <input type="number" name="converted" min="0" value="0" required></label>
-          <label>% Leads Converted <input type="text" name="convRate" readonly tabindex="-1" value="-"></label>
+          <label>Order Date <input type="date" name="date" required></label>
         </div>
-
-        <h2>Sales</h2>
         <p class="muted">One row per customer order.</p>
         <div id="lines"></div>
         <button type="button" id="add-line" class="secondary">+ Add Row</button>
@@ -111,13 +107,25 @@
         <div class="total-box">
           Total: <strong id="f-pcs">0</strong> pcs · <strong id="f-sales">RM 0.00</strong>
         </div>
-        <button type="submit">Save</button>
+        <button type="submit">Save Orders</button>
         <p id="form-msg" class="msg"></p>
+      </form>
+
+      <h2>Daily Leads</h2>
+      <form id="leads-form" class="panel">
+        <p class="muted">Enter once a day. Saving again for the same date replaces that day's numbers.</p>
+        <div class="grid">
+          <label>Date <input type="date" name="date" required></label>
+          <label>Total Leads In <input type="number" name="leads" min="0" value="0" required></label>
+          <label>Leads Converted <input type="number" name="converted" min="0" value="0" required></label>
+          <label>% Leads Converted <input type="text" name="convRate" readonly tabindex="-1" value="-"></label>
+        </div>
+        <button type="submit">Save Leads</button>
+        <p id="leads-msg" class="msg"></p>
       </form>
 
       <template id="line-tpl">
         <div class="line">
-          <label>Order Date <input type="date" name="orderDate" required></label>
           <label>Customer Name <input type="text" name="customer" required placeholder="e.g. ABC Sdn Bhd"></label>
           <label>Phone No. <input type="tel" name="phone" inputmode="tel" placeholder="e.g. 012-3456789"></label>
           <label>Category
