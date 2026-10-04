@@ -228,7 +228,8 @@ const TG_CATEGORY_WORDS = [
 ];
 const TG_HELP = 'Send a photo of the receipt with a caption, for example:\n' +
   '• DTF 150 supplier Ali\n• baju 400\n• plastik RM35.50\n\n' +
-  'No photo? Just type it, e.g. "poslaju 12". If you forget the amount I will ask for it.';
+  'No photo? Just type it, e.g. "poslaju 12". If you forget the amount I will ask for it.\n\n' +
+  '/ads shows yesterday\'s ads report again (/ads 2026-10-03 for another day).';
 
 function tgToken() {
   return PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
@@ -289,6 +290,13 @@ function handleTelegram(msg) {
   }
   if (chatId !== owner) { tgSend(chatId, 'This bot is private.'); return; }
 
+  // "/ads" resends yesterday's ads report (e.g. after the leads are keyed in); "/ads 2026-10-03" for another day.
+  if (/^\/ads\b/.test(text)) {
+    const day = (text.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
+    tgSend(chatId, adsReport(day || yesterdayText()));
+    return;
+  }
+
   const date = Utilities.formatDate(new Date(msg.date * 1000), TIME_ZONE, 'yyyy-MM-dd');
   const photo = msg.photo ? msg.photo[msg.photo.length - 1] : null;
   const doc = msg.document && /^(image\/|application\/pdf)/.test(msg.document.mime_type || '') ? msg.document : null;
@@ -341,4 +349,118 @@ function saveReceipt(fileId, date, name) {
   if (!file.ok) throw new Error('could not download the photo from Telegram');
   const blob = UrlFetchApp.fetch('https://api.telegram.org/file/bot' + tgToken() + '/' + file.result.file_path).getBlob();
   return receiptFolder().createFile(blob.setName(date + ' ' + name)).getUrl();
+}
+
+
+// ---------- Meta Ads: every morning at 8am, yesterday's ad spend goes into Expenses ----------
+//
+// One-time setup (see README):
+//   1. Script properties: META_TOKEN = a Meta access token with ads_read,
+//      META_AD_ACCOUNT = the ad account number from Ads Manager (with or without "act_").
+//   2. Choose setupMetaAds in the function list and press Run. It runs yesterday's report once as a test.
+// Each morning the spend is saved as "Advertising / Ads" and a report is sent to the Telegram owner.
+
+const META_API = 'https://graph.facebook.com/v21.0/';
+const ADS_CATEGORY = 'Advertising / Ads';
+
+function yesterdayText() {
+  return Utilities.formatDate(new Date(Date.now() - 24 * 3600 * 1000), TIME_ZONE, 'yyyy-MM-dd');
+}
+
+function metaAccount() {
+  const id = String(PropertiesService.getScriptProperties().getProperty('META_AD_ACCOUNT') || '').trim();
+  return id ? (id.indexOf('act_') === 0 ? id : 'act_' + id) : '';
+}
+
+// Spend and results for one day, straight from Ads Manager (account level).
+function metaInsights(date) {
+  const token = PropertiesService.getScriptProperties().getProperty('META_TOKEN');
+  if (!token || !metaAccount()) throw new Error('Add META_TOKEN and META_AD_ACCOUNT in Project Settings > Script properties first.');
+  const url = META_API + metaAccount() + '/insights?level=account&fields=spend,impressions,clicks,actions,account_currency' +
+    '&time_range=' + encodeURIComponent(JSON.stringify({ since: date, until: date })) + '&access_token=' + encodeURIComponent(token);
+  const res = JSON.parse(UrlFetchApp.fetch(url, { muteHttpExceptions: true }).getContentText());
+  if (res.error) throw new Error('Meta: ' + res.error.message);
+  const row = (res.data || [])[0] || {};
+  const action = type => Number(((row.actions || []).find(a => a.action_type === type) || {}).value) || 0;
+  return {
+    spend: Number(row.spend) || 0,
+    currency: row.account_currency || '',
+    impressions: Number(row.impressions) || 0,
+    clicks: Number(row.clicks) || 0,
+    messages: action('onsite_conversion.messaging_conversation_started_7d'),
+  };
+}
+
+// Save the day's spend as one expense. Running again for the same day replaces it, so figures stay current.
+function saveMetaSpend(date, spend) {
+  const id = 'meta-' + date;
+  deleteRowById(SHEET_EXPENSES, id);
+  if (spend > 0) addExpense({ id: id, date: date, kind: 'harian', category: ADS_CATEGORY, amount: spend, notes: 'Meta Ads (auto)', createdAt: new Date().toISOString() });
+}
+
+// Shop figures for the ads report: spend from Expenses, leads from the Leads tab, orders and sales from Key In.
+function adsNumbers(test) {
+  const out = { spend: 0, leads: 0, orders: 0, sales: 0 };
+  listExpenses().filter(x => x.category === ADS_CATEGORY && test(x.date)).forEach(x => out.spend += x.amount);
+  listEntries().filter(e => test(e.date)).forEach(e => {
+    out.leads += e.leads;
+    out.orders += e.lines.length;
+    e.lines.forEach(l => out.sales += Number(l.amount) || 0);
+  });
+  return out;
+}
+
+const rmText = n => 'RM' + Number(n).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const perText = (spend, n) => spend && n ? rmText(spend / n) : '-';
+const roasText = (sales, spend) => spend ? (sales / spend).toFixed(2) + 'x' : '-';
+
+// Builds the Telegram text. When Meta is set up, the day's spend is pulled from Meta and saved first.
+function adsReport(date) {
+  let meta = null, metaErr = '';
+  try {
+    if (metaAccount()) { meta = metaInsights(date); saveMetaSpend(date, meta.spend); }
+  } catch (err) { metaErr = String(err.message || err); }
+
+  const day = adsNumbers(d => d === date);
+  const mon = adsNumbers(d => d.slice(0, 7) === date.slice(0, 7) && d <= date);
+  const lines = ['📊 Ads Report ' + date, ''];
+  if (meta) {
+    lines.push('Meta Ads Manager', 'Spend: ' + rmText(meta.spend) + (meta.currency && meta.currency !== 'MYR' ? ' (' + meta.currency + ')' : ''),
+      'Impressions: ' + meta.impressions.toLocaleString('en-MY') + ' · Clicks: ' + meta.clicks.toLocaleString('en-MY'));
+    if (meta.messages) lines.push('Messages started: ' + meta.messages + ' · ' + perText(meta.spend, meta.messages) + ' each');
+    lines.push('');
+  } else if (metaErr) {
+    lines.push('⚠️ Could not read Meta Ads: ' + metaErr, '');
+  }
+  lines.push('Shop (that day)',
+    'Ad spend: ' + rmText(day.spend),
+    'Leads: ' + day.leads + (day.leads ? '' : ' (not keyed in yet?)') + ' · Cost/lead: ' + perText(day.spend, day.leads),
+    'Purchases: ' + day.orders + ' · Cost/purchase: ' + perText(day.spend, day.orders),
+    'Sales: ' + rmText(day.sales) + ' · ROAS: ' + roasText(day.sales, day.spend), '',
+    'Month to date',
+    'Ad spend: ' + rmText(mon.spend) + ' · Leads: ' + mon.leads + ' · Purchases: ' + mon.orders,
+    'Cost/lead: ' + perText(mon.spend, mon.leads) + ' · Cost/purchase: ' + perText(mon.spend, mon.orders),
+    'Sales: ' + rmText(mon.sales) + ' · ROAS: ' + roasText(mon.sales, mon.spend));
+  if (!day.leads) lines.push('', 'Key in the leads in the Leads tab, then send /ads to see this again.');
+  return lines.join('\n');
+}
+
+// Runs every morning: yesterday's report, sent to the Telegram owner.
+function dailyAdsReport() {
+  const owner = PropertiesService.getScriptProperties().getProperty('TG_OWNER');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  let text;
+  try { text = adsReport(yesterdayText()); } finally { lock.releaseLock(); }
+  if (owner && tgToken()) tgSend(owner, text);
+  else Logger.log(text);
+}
+
+// Run once from the Apps Script editor.
+function setupMetaAds() {
+  const test = metaInsights(yesterdayText());
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'dailyAdsReport').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('dailyAdsReport').timeBased().atHour(8).nearMinute(0).everyDays(1).inTimezone(TIME_ZONE).create();
+  Logger.log('Meta Ads connected (yesterday spend ' + test.spend + ' ' + test.currency + '). Sending a test report now.');
+  dailyAdsReport();
 }

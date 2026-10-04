@@ -115,6 +115,32 @@ Send a receipt photo to your own Telegram bot and it is added to Expenses, with 
 The amount is the number in the caption (or after "RM"); the category is picked from words like dtf, baju, plastik, poslaju, ink, iklan, mesin. No amount? The bot asks and you reply with it. Text without a photo (`poslaju 12`) works too.
 New expenses show up in the app within about a minute, with a **View** link to the receipt.
 
+## Meta Ads: automatic daily ad spend + Telegram report
+
+Every morning at about 8am, the script reads yesterday's spend from Meta Ads Manager (Facebook / Instagram),
+saves it in Expenses as **Advertising / Ads** (notes "Meta Ads (auto)"), and sends a report to your Telegram bot:
+Meta spend, impressions, clicks, messages started, then the shop's leads, purchases, sales, cost per lead,
+cost per purchase and ROAS for that day and for the month so far.
+Set up the Telegram bot first (section above).
+
+**Setup (once):**
+1. **Ad account ID**: in Ads Manager, the number in the account dropdown (or `act=` in the address bar)
+2. **Token** that doesn't expire:
+   - Go to developers.facebook.com → **My Apps → Create App** → type **Business** → link it to your business
+   - Go to business.facebook.com → **Settings → Users → System users → Add** (role Admin)
+   - On that system user: **Assign assets → Ad accounts →** your ad account (**View performance** is enough)
+   - **Generate new token** → choose the app → expiry **Never** → tick **ads_read** → copy the token
+3. In Apps Script → ⚙️ **Project Settings → Script properties** add:
+   `META_TOKEN` = the token, `META_AD_ACCOUNT` = the ad account ID
+4. Paste the latest `Code.gs`, save, choose **setupMetaAds** in the function list and press **Run**.
+   You should get a test report in Telegram straight away
+5. **Deploy → Manage deployments → Edit → New version → Deploy**
+
+**Notes:**
+- Once this is running, don't key in Meta ad spend by hand too, or it is counted twice. TikTok or other ads still go in by hand
+- Running it again for the same day replaces that day's Meta spend, so it never doubles
+- Leads must be keyed in (Leads tab) for cost per lead. If they weren't in yet at 8am, key them in and send **/ads** to the bot for a fresh report (`/ads 2026-10-03` for another day)
+
 ## How to use
 
 ### Option 1: One device only (easiest)
