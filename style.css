@@ -49,6 +49,13 @@ body.locked [data-del] { display: none; }
 label.check { flex-direction: row; align-items: flex-start; gap: 8px; font-weight: 500; }
 label.check input { width: auto; margin-top: 3px; }
 #pin-form { max-width: 520px; }
+.modal-box.modal-wide { max-width: 560px; max-height: 90vh; overflow-y: auto; }
+.edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.edit-grid .wide { grid-column: 1 / -1; }
+.modal-wide .btn-row { position: sticky; bottom: -20px; background: var(--surface); padding: 12px 0 4px; margin-bottom: -4px; }
+@media (max-width: 480px) { .edit-grid { grid-template-columns: 1fr; } }
+.job-actions { display: flex; justify-content: flex-end; }
+.edit-btn { background: var(--surface); color: var(--accent); border-color: var(--border); padding: 4px 12px; font-size: 0.8rem; }
 nav { display: flex; gap: 4px; overflow-x: auto; }
 nav button {
   background: none;

@@ -37,6 +37,7 @@ function doPost(e) {
     switch (req.action) {
       case 'list': return json({ ok: true, entries: listEntries(), expenses: listExpenses(), jobs: listJobs(), overhead: getOverhead(), target: getTarget() });
       case 'add': addEntry(req.entry); return json({ ok: true });
+      case 'update': updateEntry(req.entry); return json({ ok: true });
       case 'delete': deleteEntry(req.id); return json({ ok: true });
       case 'addExpense': addExpense(req.expense); return json({ ok: true });
       case 'deleteExpense': deleteRowById(SHEET_EXPENSES, req.id); return json({ ok: true });
@@ -98,7 +99,7 @@ function listEntries() {
   }));
 }
 
-function addEntry(entry) {
+function entryRow(entry) {
   if (!entry || !entry.id || !entry.date || !Array.isArray(entry.lines)) throw new Error('Incomplete data');
   let pcs = 0, sales = 0, deposit = 0;
   const byCat = {}, byPrint = {};
@@ -110,12 +111,29 @@ function addEntry(entry) {
     byCat[l.category] = (byCat[l.category] || 0) + q;
     byPrint[l.printing] = (byPrint[l.printing] || 0) + q;
   });
-  appendWithTextDate(sheet(SHEET_ENTRIES),
-    [entry.id, entry.date, Number(entry.leads) || 0, Number(entry.converted) || 0, Number(entry.leads) ? (Number(entry.converted) / Number(entry.leads) * 100).toFixed(1) + '%' : '', pcs, sales, deposit, sales - deposit]
-      .concat(CATEGORIES.map(c => byCat[c] || 0))
-      .concat(PRINTINGS.map(p => byPrint[p] || 0))
-      .concat([entry.createdAt, JSON.stringify(entry.lines)])
-  );
+  return [entry.id, entry.date, Number(entry.leads) || 0, Number(entry.converted) || 0, Number(entry.leads) ? (Number(entry.converted) / Number(entry.leads) * 100).toFixed(1) + '%' : '', pcs, sales, deposit, sales - deposit]
+    .concat(CATEGORIES.map(c => byCat[c] || 0))
+    .concat(PRINTINGS.map(p => byPrint[p] || 0))
+    .concat([entry.createdAt, JSON.stringify(entry.lines)]);
+}
+
+function addEntry(entry) {
+  appendWithTextDate(sheet(SHEET_ENTRIES), entryRow(entry));
+}
+
+// Replace an existing sale (used when a job's details are edited).
+function updateEntry(entry) {
+  const row = entryRow(entry);
+  const sh = sheet(SHEET_ENTRIES);
+  const ids = sh.getRange(1, 1, sh.getLastRow(), 1).getValues();
+  for (let i = 1; i < ids.length; i++) {
+    if (String(ids[i][0]) === String(entry.id)) {
+      sh.getRange('B:B').setNumberFormat('@');
+      sh.getRange(i + 1, 1, 1, row.length).setValues([row]);
+      return;
+    }
+  }
+  throw new Error('Sale not found');
 }
 
 function listExpenses() {

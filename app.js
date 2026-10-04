@@ -592,6 +592,7 @@ function jobCard(job) {
         ${job.complete ? '<span class="badge blue">Completed</span>' : `<span class="badge navy">${job.current.label}</span>`}
         ${job.complete ? '' : `<span class="badge age ${age.level}">${age.days === 0 ? 'New today' : `Day ${age.days}`}</span>`}
         ${dueLabel(job)}
+        <button type="button" class="edit-btn" data-edit="${esc(job.key)}">✏️ Edit</button>
       </div>
     </div>
     <div class="progress"><div style="width:${pct}%" class="${job.complete ? 'done' : ''}"></div></div>
@@ -606,6 +607,7 @@ function waitingCard(job) {
         <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}` : ''}
         <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ${rm(job.amount)} · ordered ${esc(job.date)}</div>
       </div>
+      <div class="job-status"><button type="button" class="edit-btn" data-edit="${esc(job.key)}">✏️ Edit</button></div>
       <form class="deposit-form" data-job="${esc(job.key)}">
         <input type="number" name="deposit" min="0.01" step="0.01" placeholder="Deposit (RM)" required>
         <button type="submit">Deposit Paid</button>
@@ -644,6 +646,79 @@ function renderJobs() {
   $('#job-list').innerHTML = shown.length
     ? shown.map(j => j.deposit > 0 ? jobCard(j) : waitingCard(j)).join('')
     : '<p class="muted">No jobs here.</p>';
+}
+
+// ---------- Edit a job's order details ----------
+
+let editingKey = null;
+
+function findLine(key) {
+  const i = key.lastIndexOf(':');
+  const entry = entries.find(e => e.id === key.slice(0, i));
+  const index = Number(key.slice(i + 1));
+  return entry && entry.lines[index] ? { entry, index, line: entry.lines[index] } : null;
+}
+
+function openEdit(key) {
+  const found = findLine(key);
+  if (!found) return;
+  editingKey = key;
+  const f = $('#edit-form');
+  const l = found.line;
+  const opts = (list, cur) => [...new Set([...list, cur].filter(Boolean))].map(v => `<option${v === cur ? ' selected' : ''}>${esc(v)}</option>`).join('');
+  f.category.innerHTML = opts(CATEGORIES, l.category);
+  f.printing.innerHTML = opts(PRINTINGS, l.printing);
+  f.source.innerHTML = opts(SOURCES, l.source);
+  f.customer.value = l.customer || '';
+  f.phone.value = l.phone || '';
+  f.qty.value = l.qty || '';
+  f.amount.value = l.amount || '';
+  f.deposit.value = lineDeposit(found.entry, found.index) || '';
+  f.delivery.value = l.delivery || '';
+  f.notes.value = l.notes || '';
+  $('#edit-msg').textContent = '';
+  $('#edit-modal').hidden = false;
+  f.customer.focus();
+}
+
+async function onSaveEdit(ev) {
+  ev.preventDefault();
+  const found = findLine(editingKey);
+  if (!found) return;
+  const f = ev.target;
+  const msg = $('#edit-msg');
+  const line = {
+    ...found.line,
+    customer: f.customer.value.trim(),
+    phone: f.phone.value.trim(),
+    category: f.category.value,
+    printing: f.printing.value,
+    qty: Number(f.qty.value) || 0,
+    amount: Number(f.amount.value) || 0,
+    deposit: Number(f.deposit.value) || 0,
+    source: f.source.value,
+    delivery: f.delivery.value,
+    notes: f.notes.value.trim(),
+  };
+  const updated = { ...found.entry, lines: found.entry.lines.map((l, i) => (i === found.index ? line : l)) };
+  const btn = $('button[type=submit]', f);
+  btn.disabled = true;
+  try {
+    if (settings.syncUrl) await remote({ action: 'update', entry: updated });
+    entries = entries.map(e => (e.id === updated.id ? updated : e));
+    save(LS_ENTRIES, entries);
+    $('#edit-modal').hidden = true;
+    renderAll();
+    // Keep the Jobs sheet in step (name, phone, deposit) and redraw.
+    saveJob(editingKey, { deposit: line.deposit });
+  } catch (e) {
+    msg.className = 'msg err';
+    msg.textContent = /Invalid action/.test(e.message)
+      ? 'Not saved: update Code.gs in Google Sheet to the latest version first (Deploy > Manage deployments > New version).'
+      : 'Not saved: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function saveJob(key, changes) {
@@ -949,6 +1024,12 @@ $('#job-list').addEventListener('change', ev => {
   const { job, stage } = ev.target.dataset;
   if (job && stage) saveJob(job, { [stage]: ev.target.value });
 });
+$('#job-list').addEventListener('click', ev => {
+  const btn = ev.target.closest('[data-edit]');
+  if (btn) openEdit(btn.dataset.edit);
+});
+$('#edit-form').addEventListener('submit', onSaveEdit);
+$('#edit-cancel').addEventListener('click', () => { $('#edit-modal').hidden = true; });
 $('#job-list').addEventListener('submit', ev => {
   ev.preventDefault();
   const form = ev.target;
