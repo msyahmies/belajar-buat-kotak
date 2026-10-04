@@ -589,7 +589,7 @@ function jobCard(job) {
         ${job.notes ? `<div class="muted">Notes: ${esc(job.notes)}</div>` : ''}
       </div>
       <div class="job-status">
-        ${job.complete ? '<span class="badge green">Completed</span>' : `<span class="badge navy">${job.current.label}</span>`}
+        ${job.complete ? '<span class="badge blue">Completed</span>' : `<span class="badge navy">${job.current.label}</span>`}
         ${job.complete ? '' : `<span class="badge age ${age.level}">${age.days === 0 ? 'New today' : `Day ${age.days}`}</span>`}
         ${dueLabel(job)}
       </div>

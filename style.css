@@ -104,6 +104,7 @@ h2 { font-size: 1rem; margin: 24px 0 8px; }
 .progress { height: 12px; background: var(--border); border-radius: 6px; margin-top: 12px; overflow: hidden; }
 .progress div { height: 100%; width: 0; background: var(--navy-2); transition: width .3s; }
 .progress div.done { background: var(--ok); }
+.job.complete .progress div.done { background: #1d4ed8; }
 
 .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 
@@ -194,7 +195,7 @@ button.danger { background: none; border-color: var(--danger); color: var(--dang
 .chip { background: var(--accent-soft); border: 1px solid var(--sky); border-radius: 999px; padding: 4px 10px; font-size: 0.8rem; }
 #tab-jobs .row label { flex: 1 1 200px; }
 .job { background: var(--surface); border: 1px solid var(--border); border-left: 5px solid var(--navy-2); border-radius: 10px; padding: 12px 14px 4px; margin-bottom: 12px; }
-.job.complete { border-left-color: var(--green); opacity: 0.85; }
+.job.complete { background: #dbeefe; border-color: #93c5fd; border-left-color: #1d4ed8; }
 /* Age of an open job since it came in */
 .job.age-green { background: #e9f7ee; border-color: #9fd8b2; border-left-color: var(--green); }
 .job.age-yellow { background: #fff8d6; border-color: #f2d45c; border-left-color: #eab308; }
@@ -211,6 +212,7 @@ button.danger { background: none; border-color: var(--danger); color: var(--dang
 .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; background: var(--accent-soft); color: var(--navy); white-space: nowrap; }
 .badge.navy { background: var(--navy); color: #fff; }
 .badge.green { background: var(--green); color: #fff; }
+.badge.blue { background: #1d4ed8; color: #fff; }
 .badge.red { background: var(--red); color: #fff; }
 .badge.yellow { background: var(--yellow); color: var(--navy); }
 .deposit-form { display: flex; gap: 8px; align-items: center; }
