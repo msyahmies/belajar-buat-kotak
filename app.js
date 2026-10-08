@@ -1048,6 +1048,20 @@ function jobAge(job) {
   return { days, level: days >= 7 ? 'red' : days >= 4 ? 'yellow' : 'green' };
 }
 
+// Malaysian number -> WhatsApp chat link: 012-345 6789 / +6012... -> https://wa.me/60123456789.
+// The chat opens in whichever WhatsApp is logged in on this device (the shop's number on staff PCs).
+function waNumber(phone) {
+  let d = String(phone || '').replace(/\D/g, '');
+  if (d.startsWith('0')) d = '6' + d;
+  else if (d.startsWith('1')) d = '60' + d;
+  return d.length >= 10 && d.length <= 15 ? d : '';
+}
+const WA_ICON = '<svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true"><path fill="#25D366" d="M16 2.9C8.8 2.9 3 8.7 3 15.9c0 2.3.6 4.5 1.7 6.5L3 29l6.8-1.8c1.9 1 4 1.6 6.2 1.6 7.2 0 13-5.8 13-13S23.2 2.9 16 2.9z"/><path fill="#fff" d="M23.3 19.6c-.4-.2-2.3-1.1-2.6-1.3-.4-.1-.6-.2-.9.2-.3.4-1 1.3-1.2 1.5-.2.3-.4.3-.8.1-.4-.2-1.6-.6-3.1-1.9-1.1-1-1.9-2.3-2.1-2.7-.2-.4 0-.6.2-.8l.6-.7c.2-.2.3-.4.4-.7.1-.3 0-.5 0-.7-.1-.2-.9-2.1-1.2-2.9-.3-.8-.6-.6-.9-.7h-.7c-.3 0-.7.1-1 .5-.4.4-1.4 1.3-1.4 3.2s1.4 3.7 1.6 4c.2.3 2.7 4.2 6.6 5.9 2.4 1 3.3 1.1 4.5.9.7-.1 2.3-.9 2.6-1.8.3-.9.3-1.7.2-1.8-.1-.2-.4-.3-.8-.4z"/></svg>';
+function waLink(phone) {
+  const n = waNumber(phone);
+  return n ? ` <a class="wa" href="https://wa.me/${n}" target="_blank" rel="noopener" title="WhatsApp ${esc(phone)}">${WA_ICON}</a>` : '';
+}
+
 function jobCard(job) {
   const pct = Math.round(job.doneCount / job.stages.length * 100);
   const balance = (Number(job.amount) || 0) - job.deposit;
@@ -1063,7 +1077,7 @@ function jobCard(job) {
     ${thumbs(job.images)}
     <div class="job-head">
       <div>
-        <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}` : ''}
+        <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}${waLink(job.phone)}` : ''}
         <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ordered ${esc(job.date)}${job.delivery ? ` · delivery ${esc(job.delivery)}` : ''}</div>
         <div class="muted">Total ${rm(job.amount)} · Deposit ${rm(job.deposit)} · Balance ${rm(balance)}</div>
         ${job.notes ? `<div class="muted">Notes: ${esc(job.notes)}</div>` : ''}
@@ -1086,7 +1100,7 @@ function waitingCard(job) {
     ${thumbs(job.images)}
     <div class="job-head">
       <div>
-        <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}` : ''}
+        <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}${waLink(job.phone)}` : ''}
         <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ${rm(job.amount)} · ordered ${esc(job.date)}</div>
       </div>
       <div class="job-status"><button type="button" class="edit-btn" data-edit="${esc(job.key)}">✏️ Edit</button>
