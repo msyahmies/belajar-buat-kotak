@@ -15,6 +15,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
   - **Lead source** (WhatsApp, Facebook, Instagram, TikTok, Walk-in, Referral, Returning Customer, Others)
   - **Expected delivery** date
   - **Notes**
+  - **Product photos**: 4 slots, **at least 1 photo is required** before the order can be saved. Photos are shrunk automatically and saved in Google Drive (folder *Shop Sales Tracker Product Photos*). They show above each job on the Jobs tab and in History; tap a photo to see it large. **✏️ Edit** can add, remove or change them
 
 ## What the Dashboard shows
 
@@ -164,6 +165,11 @@ by category and printing), so the owner can check them directly in Google Sheet.
 the **Expenses** sheet, job progress to the **Jobs** sheet, and the target is kept in the **Settings** sheet.
 
 > Anyone with the `/exec` URL can add or delete records. Don't share the URL outside your staff.
+
+### Product photos (once, after pasting the latest Code.gs)
+In Apps Script choose **setupPhotos** in the function list and press **Run**, then allow Google Drive access.
+Then **Deploy → Manage deployments → Edit → New version → Deploy**. Until this is done, saving a key in shows
+"update Code.gs first". Photos are shared as "anyone with the link can view" so every staff device can show them.
 
 ### Hosting so staff can open it on their phones
 The easiest way is **GitHub Pages**: Settings > Pages > choose the branch, then share the link

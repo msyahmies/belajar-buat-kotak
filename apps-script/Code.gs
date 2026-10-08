@@ -42,6 +42,7 @@ function doPost(e) {
       case 'addExpense': addExpense(req.expense); return json({ ok: true });
       case 'updateExpense': updateExpense(req.expense); return json({ ok: true });
       case 'deleteExpense': deleteRowById(SHEET_EXPENSES, req.id); return json({ ok: true });
+      case 'uploadImage': return json({ ok: true, id: uploadImage(req) });
       case 'saveJob': saveJob(req.job); return json({ ok: true });
       case 'deleteJob': deleteRowById(SHEET_JOBS, req.id); return json({ ok: true });
       case 'setOverhead': setOverhead(req.overhead); return json({ ok: true });
@@ -192,6 +193,32 @@ function saveJob(job) {
     if (String(ids[i][0]) === String(job.id)) { sh.getRange(i + 1, 1, 1, row.length).setValues([row]); return; }
   }
   sh.appendRow(row);
+}
+
+// ---------- Product photos (Key In) ----------
+// Photos are saved in the Drive folder "Shop Sales Tracker Product Photos" and shared as
+// "anyone with the link can view", so every staff device can show them on the Jobs tab.
+
+function photoFolder() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('PHOTO_FOLDER');
+  if (id) { try { return DriveApp.getFolderById(id); } catch (err) { /* folder deleted: make a new one */ } }
+  const folder = DriveApp.createFolder('Shop Sales Tracker Product Photos');
+  props.setProperty('PHOTO_FOLDER', folder.getId());
+  return folder;
+}
+
+function uploadImage(req) {
+  if (!req || !req.data) throw new Error('No photo');
+  const name = String(req.name || 'photo.jpg').replace(/[\\/:*?"<>|]/g, ' ').slice(0, 120);
+  const file = photoFolder().createFile(Utilities.newBlob(Utilities.base64Decode(req.data), 'image/jpeg', name));
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getId();
+}
+
+// Run once from the Apps Script editor so Google asks for Drive permission.
+function setupPhotos() {
+  Logger.log('Product photos will be saved in: ' + photoFolder().getUrl());
 }
 
 function deleteEntry(id) {

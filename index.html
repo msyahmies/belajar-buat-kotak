@@ -123,6 +123,7 @@
           </label>
           <label>Expected Delivery <input type="date" name="delivery"></label>
           <label class="wide">Notes <textarea name="notes" rows="2" placeholder="e.g. sizes, colours, design"></textarea></label>
+          <div class="wide photos"><span class="photos-label">Product Photos <b>(required: at least 1, up to 4)</b></span><div class="slots"></div></div>
           <button type="button" class="remove" title="Remove">✕</button>
         </div>
       </template>
@@ -468,6 +469,7 @@
         <label>Lead Source <select name="source"></select></label>
         <label>Expected Delivery <input type="date" name="delivery"></label>
         <label class="wide">Notes <textarea name="notes" rows="2"></textarea></label>
+        <div class="wide photos"><span class="photos-label">Product Photos (up to 4)</span><div class="slots"></div></div>
       </div>
       <p id="edit-msg" class="msg"></p>
       <div class="btn-row">
@@ -496,6 +498,13 @@
         <button type="button" id="exp-edit-cancel" class="secondary">Cancel</button>
       </div>
     </form>
+  </div>
+
+  <div id="img-modal" class="modal" hidden>
+    <div class="img-box">
+      <img id="img-full" alt="Product photo">
+      <button type="button" id="img-close" class="secondary">Close</button>
+    </div>
   </div>
 
   <script src="app.js"></script>

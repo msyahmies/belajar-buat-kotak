@@ -413,6 +413,88 @@ function renderLeads() {
     : '<tr><td colspan="3" class="muted">No orders yet.</td></tr>';
 }
 
+// ---------- Product photos ----------
+// Each order row keeps up to 4 photos in line.images. With Google Sheet sync a photo is a Google Drive
+// file id (uploaded through Apps Script); without it, a small JPEG data URL kept on this device.
+
+const MAX_PHOTOS = 4;
+const isDriveId = v => /^[\w-]{20,100}$/.test(v);
+const imgSrc = (v, size = 600) => String(v).startsWith('data:image/jpeg') ? v : isDriveId(v) ? `https://drive.google.com/thumbnail?id=${v}&sz=w${size}` : '';
+const thumbs = (images, cls = '') => (images || []).length
+  ? `<div class="thumbs ${cls}">${images.map(v => imgSrc(v) && `<img src="${esc(imgSrc(v))}" data-full="${esc(imgSrc(v, 1600))}" alt="Product photo" loading="lazy">`).join('')}</div>` : '';
+
+// Shrink a picked photo to a JPEG data URL (max side 1280px online, 700px when kept on this device).
+function shrinkImage(file) {
+  const max = settings.syncUrl ? 1280 : 700;
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', settings.syncUrl ? 0.82 : 0.7));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file is not a photo')); };
+    img.src = url;
+  });
+}
+
+// Draws the 4 slots of a .photos box; box.images holds Drive ids or data URLs (new, not yet uploaded).
+function renderSlots(box) {
+  const imgs = box.images || (box.images = []);
+  const filled = imgs.map((v, i) => `<div class="slot"><img src="${esc(imgSrc(v))}" data-full="${esc(imgSrc(v, 1600))}" alt="Product photo"><button type="button" class="x" data-rm="${i}" title="Remove">✕</button></div>`);
+  const empty = Array.from({ length: MAX_PHOTOS - imgs.length }, () => '<label class="slot add" title="Add photo">+<input type="file" accept="image/*" multiple></label>');
+  $('.slots', box).innerHTML = filled.concat(empty).join('');
+  if (imgs.length && box.classList.contains('missing')) {
+    box.classList.remove('missing');
+    if (!$$('#lines .photos.missing').length) $('#form-msg').textContent = '';
+  }
+}
+
+function initPhotos(box, images) {
+  box.images = [...(images || [])];
+  renderSlots(box);
+  box.addEventListener('change', async ev => {
+    const files = [...(ev.target.files || [])].slice(0, MAX_PHOTOS - box.images.length);
+    for (const f of files) {
+      try { box.images.push(await shrinkImage(f)); } catch (err) { alert(err.message); }
+    }
+    renderSlots(box);
+  });
+  box.addEventListener('click', ev => {
+    const rm = ev.target.dataset?.rm;
+    if (rm !== undefined) { box.images.splice(Number(rm), 1); renderSlots(box); }
+  });
+}
+
+// Uploads new photos (data URLs) to Google Drive and returns the list with Drive ids in their place.
+async function uploadPhotos(images, label, onProgress) {
+  if (!settings.syncUrl) return images;
+  const out = [];
+  for (const v of images) {
+    if (!v.startsWith('data:')) { out.push(v); continue; }
+    onProgress?.();
+    const res = await remote({ action: 'uploadImage', name: `${label}.jpg`, data: v.split(',')[1] });
+    out.push(res.id);
+  }
+  return out;
+}
+
+// Clicking any product photo opens it large.
+document.addEventListener('click', ev => {
+  const full = ev.target.dataset?.full;
+  if (!full || ev.target.tagName !== 'IMG') return;
+  $('#img-full').src = full;
+  $('#img-modal').hidden = false;
+});
+
 // ---------- Key In form ----------
 
 function addLine() {
@@ -420,6 +502,7 @@ function addLine() {
   $('[name=category]', node).innerHTML = CATEGORIES.map(c => `<option>${c}</option>`).join('');
   $('[name=printing]', node).innerHTML = PRINTINGS.map(p => `<option>${p}</option>`).join('');
   $('[name=source]', node).innerHTML = SOURCES.map(s => `<option>${s}</option>`).join('');
+  initPhotos($('.photos', node), []);
   $('.remove', node).addEventListener('click', () => {
     if ($$('#lines .line').length > 1) node.remove();
     updateFormTotal();
@@ -439,6 +522,7 @@ function readLines() {
     source: $('[name=source]', n).value,
     delivery: $('[name=delivery]', n).value,
     notes: $('[name=notes]', n).value.trim(),
+    images: [...($('.photos', n).images || [])],
   }));
 }
 
@@ -568,9 +652,24 @@ async function onSubmitEntry(ev) {
     createdAt: new Date().toISOString(),
   };
 
+  // Every order needs at least one product photo, so the design can be traced on the Jobs tab.
+  const nodes = $$('#lines .line');
+  const noPhoto = entry.lines.findIndex(l => !l.images.length);
+  if (noPhoto !== -1) {
+    nodes.forEach((n, i) => $('.photos', n).classList.toggle('missing', !entry.lines[i].images.length));
+    msg.className = 'msg err';
+    msg.textContent = `Add at least 1 product photo for order ${noPhoto + 1}${entry.lines[noPhoto].customer ? ` (${entry.lines[noPhoto].customer})` : ''}.`;
+    nodes[noPhoto].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
   const btn = $('button[type=submit]', f);
   btn.disabled = true;
   try {
+    const total = entry.lines.reduce((t, l) => t + l.images.filter(v => v.startsWith('data:')).length, 0);
+    let done = 0;
+    const progress = () => { msg.className = 'msg'; msg.textContent = `Uploading photos ${++done}/${total}…`; };
+    for (const l of entry.lines) l.images = await uploadPhotos(l.images, `${entry.date} ${l.customer || 'order'}`, progress);
     if (settings.syncUrl) await remote({ action: 'add', entry });
     entries.push(entry);
     save(LS_ENTRIES, entries);
@@ -583,7 +682,9 @@ async function onSubmitEntry(ev) {
     showTab('jobs');
   } catch (e) {
     msg.className = 'msg err';
-    msg.textContent = 'Save failed: ' + e.message;
+    msg.textContent = /Invalid action/.test(e.message)
+      ? 'Not saved: update Code.gs in Google Sheet to the latest version first (see README: Product photos).'
+      : 'Save failed: ' + e.message;
   } finally {
     btn.disabled = false;
   }
@@ -619,7 +720,7 @@ function renderHistory() {
   }
   tbody.innerHTML = list.map(e => {
     const t = entryTotals(e);
-    const detail = e.lines.map((l, i) => lineDetail(l, lineDeposit(e, i))
+    const detail = e.lines.map((l, i) => thumbs(l.images, 'small') + lineDetail(l, lineDeposit(e, i))
       + ` <button type="button" class="edit-btn" data-edit="${esc(jobKey(e, i))}">✏️ Edit</button>`
       + ` <button type="button" class="danger small" data-del-line="${esc(jobKey(e, i))}">Delete</button>`).join('<hr>');
     return `<tr>
@@ -959,6 +1060,7 @@ function jobCard(job) {
     </label>`).join('');
   const age = jobAge(job);
   return `<div class="job${job.complete ? ' complete' : ` age-${age.level}`}">
+    ${thumbs(job.images)}
     <div class="job-head">
       <div>
         <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}` : ''}
@@ -981,6 +1083,7 @@ function jobCard(job) {
 
 function waitingCard(job) {
   return `<div class="job waiting">
+    ${thumbs(job.images)}
     <div class="job-head">
       <div>
         <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}` : ''}
@@ -1057,6 +1160,8 @@ function openEdit(key) {
   f.deposit.value = lineDeposit(found.entry, found.index) || '';
   f.delivery.value = l.delivery || '';
   f.notes.value = l.notes || '';
+  $('.photos', f).images = [...(l.images || [])];
+  renderSlots($('.photos', f));
   $('#edit-msg').textContent = '';
   $('#edit-modal').hidden = false;
   f.customer.focus();
@@ -1081,11 +1186,13 @@ async function onSaveEdit(ev) {
     source: f.source.value,
     delivery: f.delivery.value,
     notes: f.notes.value.trim(),
+    images: [...($('.photos', f).images || [])],
   };
-  const updated = { ...found.entry, lines: found.entry.lines.map((l, i) => (i === found.index ? line : l)) };
   const btn = $('button[type=submit]', f);
   btn.disabled = true;
   try {
+    line.images = await uploadPhotos(line.images, `${found.entry.date} ${line.customer || 'order'}`, () => { msg.className = 'msg'; msg.textContent = 'Uploading photos…'; });
+    const updated = { ...found.entry, lines: found.entry.lines.map((l, i) => (i === found.index ? line : l)) };
     if (settings.syncUrl) await remote({ action: 'update', entry: updated });
     entries = entries.map(e => (e.id === updated.id ? updated : e));
     save(LS_ENTRIES, entries);
@@ -1450,6 +1557,9 @@ $('#job-list').addEventListener('click', ev => {
   if (del) onDeleteLine(del);
 });
 $('#edit-form').addEventListener('submit', onSaveEdit);
+initPhotos($('#edit-form .photos'), []);
+$('#img-close').addEventListener('click', () => { $('#img-modal').hidden = true; });
+$('#img-modal').addEventListener('click', ev => { if (ev.target.id === 'img-modal') $('#img-modal').hidden = true; });
 $('#edit-cancel').addEventListener('click', () => { $('#edit-modal').hidden = true; });
 $('#job-list').addEventListener('submit', ev => {
   ev.preventDefault();
