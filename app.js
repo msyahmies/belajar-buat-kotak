@@ -669,6 +669,7 @@ async function onSubmitEntry(ev) {
     const total = entry.lines.reduce((t, l) => t + l.images.filter(v => v.startsWith('data:')).length, 0);
     let done = 0;
     const progress = () => { msg.className = 'msg'; msg.textContent = `Uploading photos ${++done}/${total}…`; };
+    const picked = entry.lines.map(l => [...l.images]);
     for (const l of entry.lines) l.images = await uploadPhotos(l.images, `${entry.date} ${l.customer || 'order'}`, progress);
     if (settings.syncUrl) await remote({ action: 'add', entry });
     entries.push(entry);
@@ -680,7 +681,7 @@ async function onSubmitEntry(ev) {
     $('#job-filter').value = entry.lines.some(l => l.deposit > 0) ? 'active' : 'waiting';
     renderJobs();
     showTab('jobs');
-    shareEntry(entry);
+    shareEntry(entry, picked);
   } catch (e) {
     msg.className = 'msg err';
     msg.textContent = /Invalid action/.test(e.message)
@@ -716,19 +717,68 @@ function orderMessage(date, lines, deposits) {
   return out.join('\n');
 }
 
-function openShare(text) {
-  $('#share-preview').textContent = text;
-  $('#share-wa').href = 'https://wa.me/?text=' + encodeURIComponent(text);
-  $('#share-modal').hidden = false;
+// Phones (and Chrome/Edge on Windows) can share photos + text straight into WhatsApp through the
+// device's share menu. The photos are loaded first, because sharing must start right on the button press.
+const canShareFiles = () => {
+  try { return !!navigator.canShare && navigator.canShare({ files: [new File([''], 'x.jpg', { type: 'image/jpeg' })] }); } catch { return false; }
+};
+let shareFiles = [];
+let shareText = '';
+
+async function photoBlob(v) {
+  if (String(v).startsWith('data:')) return (await fetch(v)).blob();
+  if (!isDriveId(v) || !settings.syncUrl) return null;
+  const res = await remote({ action: 'getImage', id: v });
+  return (await fetch('data:image/jpeg;base64,' + res.data)).blob();
 }
 
-function shareEntry(entry) {
-  openShare(orderMessage(entry.date, entry.lines, entry.lines.map((_, i) => lineDeposit(entry, i))));
+async function openShare(text, photos) {
+  shareText = text;
+  shareFiles = [];
+  $('#share-preview').textContent = text;
+  $('#share-wa').href = 'https://wa.me/?text=' + encodeURIComponent(text);
+  const btn = $('#share-files');
+  const withPhotos = photos.length && canShareFiles();
+  btn.hidden = !withPhotos;
+  $('#share-wa').textContent = withPhotos ? 'Text only' : 'Send to WhatsApp';
+  $('#share-wa').classList.toggle('alt', !!withPhotos);
+  $('#share-note').textContent = withPhotos
+    ? 'Send with Photos opens the share menu: pick WhatsApp, then the group, then Send. The message is also copied, so you can paste it if WhatsApp leaves it out.'
+    : 'WhatsApp opens with the message ready: choose the group and press Send.'
+      + (photos.length ? ' (Sending photos needs Chrome or Edge, or the app on a phone.)' : '');
+  $('#share-modal').hidden = false;
+  if (!withPhotos) return;
+  btn.disabled = true;
+  btn.textContent = 'Loading photos…';
+  try {
+    const blobs = await Promise.all(photos.map(photoBlob));
+    shareFiles = blobs.filter(Boolean).map((b, i) => new File([b], `order-photo-${i + 1}.jpg`, { type: 'image/jpeg' }));
+  } catch (err) {
+    shareFiles = [];
+  }
+  btn.disabled = !shareFiles.length;
+  btn.textContent = shareFiles.length ? `Send with ${shareFiles.length} Photo${shareFiles.length > 1 ? 's' : ''}` : 'Photos could not load';
+}
+
+async function onShareFiles() {
+  try { await navigator.clipboard?.writeText(shareText); } catch { /* clipboard is optional */ }
+  try {
+    await navigator.share({ files: shareFiles, text: shareText });
+    $('#share-modal').hidden = true;
+  } catch (err) {
+    if (err.name !== 'AbortError') alert('Could not share the photos: ' + err.message + '\nUse "Text only" instead.');
+  }
+}
+
+// photos: the photos as picked (data URLs) right after saving, so nothing has to be downloaded again.
+function shareEntry(entry, photos) {
+  openShare(orderMessage(entry.date, entry.lines, entry.lines.map((_, i) => lineDeposit(entry, i))),
+    (photos || entry.lines.map(l => l.images || [])).flat());
 }
 
 function shareJob(key) {
   const found = findLine(key);
-  if (found) openShare(orderMessage(found.line.orderDate || found.entry.date, [found.line], [lineDeposit(found.entry, found.index)]));
+  if (found) openShare(orderMessage(found.line.orderDate || found.entry.date, [found.line], [lineDeposit(found.entry, found.index)]), found.line.images || []);
 }
 
 // ---------- History ----------
@@ -1617,6 +1667,7 @@ $('#job-list').addEventListener('click', ev => {
 });
 $('#edit-form').addEventListener('submit', onSaveEdit);
 initPhotos($('#edit-form .photos'), []);
+$('#share-files').addEventListener('click', onShareFiles);
 $('#share-skip').addEventListener('click', () => { $('#share-modal').hidden = true; });
 $('#share-wa').addEventListener('click', () => { $('#share-modal').hidden = true; });
 $('#img-close').addEventListener('click', () => { $('#img-modal').hidden = true; });

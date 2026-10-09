@@ -43,6 +43,7 @@ function doPost(e) {
       case 'updateExpense': updateExpense(req.expense); return json({ ok: true });
       case 'deleteExpense': deleteRowById(SHEET_EXPENSES, req.id); return json({ ok: true });
       case 'uploadImage': return json({ ok: true, id: uploadImage(req) });
+      case 'getImage': return json({ ok: true, data: getImage(req.id) });
       case 'saveJob': saveJob(req.job); return json({ ok: true });
       case 'deleteJob': deleteRowById(SHEET_JOBS, req.id); return json({ ok: true });
       case 'setOverhead': setOverhead(req.overhead); return json({ ok: true });
@@ -214,6 +215,18 @@ function uploadImage(req) {
   const file = photoFolder().createFile(Utilities.newBlob(Utilities.base64Decode(req.data), 'image/jpeg', name));
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   return file.getId();
+}
+
+// Hands a product photo back as base64 so the app can attach it when sharing to WhatsApp.
+// Only files in the product photo folder can be read this way.
+function getImage(id) {
+  const file = DriveApp.getFileById(String(id));
+  const folderId = PropertiesService.getScriptProperties().getProperty('PHOTO_FOLDER');
+  const parents = file.getParents();
+  let ok = false;
+  while (parents.hasNext()) if (parents.next().getId() === folderId) ok = true;
+  if (!ok) throw new Error('Not a product photo');
+  return Utilities.base64Encode(file.getBlob().getBytes());
 }
 
 // Run once from the Apps Script editor so Google asks for Drive permission.

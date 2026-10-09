@@ -272,3 +272,6 @@ a.wa:hover { background: #e7f8ee; }
 .btn-wa { display: inline-block; background: #25D366; color: #fff; font-weight: 700; padding: 10px 16px; border-radius: 8px; text-decoration: none; }
 .btn-wa:hover { background: #1da851; }
 button.share-btn { background: #25D366; color: #fff; border-color: #25D366; padding: 4px 12px; font-size: 0.8rem; }
+button.btn-wa { border: none; font-size: 1rem; }
+button.btn-wa:disabled { opacity: 0.6; }
+#share-wa.alt { background: var(--surface); color: var(--accent); border: 1px solid var(--border); font-weight: 600; }
