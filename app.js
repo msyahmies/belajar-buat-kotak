@@ -686,7 +686,9 @@ async function onSubmitEntry(ev) {
     msg.className = 'msg err';
     msg.textContent = /Invalid action/.test(e.message)
       ? 'Not saved: update Code.gs in Google Sheet to the latest version first (see README: Product photos).'
-      : 'Save failed: ' + e.message;
+      : /permission to call DriveApp/.test(e.message)
+        ? 'Not saved: Google Drive is not allowed yet. Owner: in Apps Script run setupPhotos once and press Allow, then Deploy > Manage deployments > Edit > New version > Deploy.'
+        : 'Save failed: ' + e.message;
   } finally {
     btn.disabled = false;
   }
