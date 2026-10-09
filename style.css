@@ -268,3 +268,7 @@ button.danger { background: none; border-color: var(--danger); color: var(--dang
 .img-box img { max-width: 92vw; max-height: 80vh; border-radius: 8px; background: #fff; }
 a.wa { display: inline-flex; vertical-align: middle; margin-left: 4px; padding: 2px; border-radius: 6px; }
 a.wa:hover { background: #e7f8ee; }
+.share-preview { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: 0.85rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; max-height: 40vh; overflow-y: auto; margin: 8px 0; }
+.btn-wa { display: inline-block; background: #25D366; color: #fff; font-weight: 700; padding: 10px 16px; border-radius: 8px; text-decoration: none; }
+.btn-wa:hover { background: #1da851; }
+button.share-btn { background: #25D366; color: #fff; border-color: #25D366; padding: 4px 12px; font-size: 0.8rem; }

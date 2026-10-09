@@ -680,6 +680,7 @@ async function onSubmitEntry(ev) {
     $('#job-filter').value = entry.lines.some(l => l.deposit > 0) ? 'active' : 'waiting';
     renderJobs();
     showTab('jobs');
+    shareEntry(entry);
   } catch (e) {
     msg.className = 'msg err';
     msg.textContent = /Invalid action/.test(e.message)
@@ -688,6 +689,46 @@ async function onSubmitEntry(ev) {
   } finally {
     btn.disabled = false;
   }
+}
+
+// ---------- Share order to a WhatsApp group ----------
+// WhatsApp has no free way to post into a group automatically, so the app opens WhatsApp with the
+// message already written (wa.me/?text=...); staff pick the group and press Send.
+
+const photoLink = v => isDriveId(v) ? `https://drive.google.com/file/d/${v}/view` : '';
+
+function orderMessage(date, lines, deposits) {
+  const out = [`🧾 *NEW ORDER* · ${date}`];
+  let pcs = 0, sales = 0;
+  lines.forEach((l, i) => {
+    const amt = Number(l.amount) || 0, dep = deposits[i];
+    pcs += Number(l.qty) || 0;
+    sales += amt;
+    out.push('', `${lines.length > 1 ? `${i + 1}) ` : ''}*${l.customer || '(no name)'}*${l.phone ? ` · ${l.phone}` : ''}`,
+      `${l.qty} × ${l.category} · ${l.printing}`,
+      `Total ${rm(amt)} · Deposit ${rm(dep)} · Balance ${rm(amt - dep)}`);
+    if (l.source || l.delivery) out.push([l.source && `Source: ${l.source}`, l.delivery && `Delivery: ${l.delivery}`].filter(Boolean).join(' · '));
+    if (l.notes) out.push(`Notes: ${l.notes}`);
+    const links = (l.images || []).map(photoLink).filter(Boolean);
+    if (links.length) out.push('Photos:', ...links);
+  });
+  if (lines.length > 1) out.push('', `*Total: ${pcs} pcs · ${rm(sales)}*`);
+  return out.join('\n');
+}
+
+function openShare(text) {
+  $('#share-preview').textContent = text;
+  $('#share-wa').href = 'https://wa.me/?text=' + encodeURIComponent(text);
+  $('#share-modal').hidden = false;
+}
+
+function shareEntry(entry) {
+  openShare(orderMessage(entry.date, entry.lines, entry.lines.map((_, i) => lineDeposit(entry, i))));
+}
+
+function shareJob(key) {
+  const found = findLine(key);
+  if (found) openShare(orderMessage(found.line.orderDate || found.entry.date, [found.line], [lineDeposit(found.entry, found.index)]));
 }
 
 // ---------- History ----------
@@ -1087,6 +1128,7 @@ function jobCard(job) {
         ${job.complete ? '' : `<span class="badge age ${age.level}">${age.days === 0 ? 'New today' : `Day ${age.days}`}</span>`}
         ${dueLabel(job)}
         <button type="button" class="edit-btn" data-edit="${esc(job.key)}">✏️ Edit</button>
+        <button type="button" class="share-btn" data-share="${esc(job.key)}">📤 Share</button>
         <button type="button" class="danger small" data-del-line="${esc(job.key)}">Delete</button>
       </div>
     </div>
@@ -1104,6 +1146,7 @@ function waitingCard(job) {
         <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ${rm(job.amount)} · ordered ${esc(job.date)}</div>
       </div>
       <div class="job-status"><button type="button" class="edit-btn" data-edit="${esc(job.key)}">✏️ Edit</button>
+        <button type="button" class="share-btn" data-share="${esc(job.key)}">📤 Share</button>
         <button type="button" class="danger small" data-del-line="${esc(job.key)}">Delete</button></div>
       <form class="deposit-form" data-job="${esc(job.key)}">
         <input type="number" name="deposit" min="0.01" step="0.01" placeholder="Deposit (RM)" required>
@@ -1567,11 +1610,15 @@ $('#job-list').addEventListener('change', ev => {
 $('#job-list').addEventListener('click', ev => {
   const btn = ev.target.closest('[data-edit]');
   if (btn) openEdit(btn.dataset.edit);
+  const share = ev.target.dataset?.share;
+  if (share) shareJob(share);
   const del = ev.target.dataset?.delLine;
   if (del) onDeleteLine(del);
 });
 $('#edit-form').addEventListener('submit', onSaveEdit);
 initPhotos($('#edit-form .photos'), []);
+$('#share-skip').addEventListener('click', () => { $('#share-modal').hidden = true; });
+$('#share-wa').addEventListener('click', () => { $('#share-modal').hidden = true; });
 $('#img-close').addEventListener('click', () => { $('#img-modal').hidden = true; });
 $('#img-modal').addEventListener('click', ev => { if (ev.target.id === 'img-modal') $('#img-modal').hidden = true; });
 $('#edit-cancel').addEventListener('click', () => { $('#edit-modal').hidden = true; });
