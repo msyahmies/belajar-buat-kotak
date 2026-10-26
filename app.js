@@ -1,7 +1,7 @@
 // Shop Sales Tracker — data is kept in localStorage and (optionally) synced
 // to Google Sheet through Google Apps Script (see apps-script/Code.gs).
 
-const CATEGORIES = ['Baju Pekerja', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
+const CATEGORIES = ['Work Shirt', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
 const PRINTINGS = ['DTF', 'Sublimation'];
 // Operation costs are bought as needed (daily); overheads are fixed monthly costs.
 const OPERATION_COSTS = ['Blank Shirts', 'DTF Sticker / Film', 'Sublimation Paper & Ink', 'Ink', 'Plastic / Packaging', 'Delivery / Postage', 'Advertising / Ads', 'Machine Maintenance', 'Other Operation Cost'];
@@ -10,7 +10,7 @@ const SOURCES = ['WhatsApp', 'Facebook', 'Instagram', 'TikTok', 'Walk-in', 'Refe
 
 // Names used by the earlier Malay version, so records saved before still group correctly.
 const LEGACY_NAMES = {
-  'Work Shirt': 'Baju Pekerja', 'Baju Family Day': 'Family Day Shirt', 'Baju Sukan': 'Sports Shirt', 'Baju Birthday': 'Birthday Shirt',
+  'Baju Pekerja': 'Work Shirt', 'Baju Family Day': 'Family Day Shirt', 'Baju Sukan': 'Sports Shirt', 'Baju Birthday': 'Birthday Shirt',
   'Customer Lama': 'Returning Customer', 'Lain-lain': 'Others',
   'Sewa Kedai': 'Shop Rent', 'Gaji Staff': 'Staff Salary', 'Bil Elektrik & Air': 'Electricity & Water', 'Internet & Telefon': 'Internet & Phone',
   'Baju Kosong / Bahan': 'Blank Shirts', 'Blank Shirts / Materials': 'Blank Shirts', 'Ink & Film': 'DTF Sticker / Film', 'Iklan / Ads': 'Advertising / Ads', 'Penghantaran / Pos': 'Delivery / Postage',

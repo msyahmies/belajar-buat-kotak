@@ -9,7 +9,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 - One or more **sales rows** (one row per order), each with:
   - **Order No.** (e.g. PB0107): filled in automatically with the next number after the highest one used; can be changed. Shown on the job card and searchable
   - **Customer name** and **phone no.**
-  - **Category**: Baju Pekerja / Family Day Shirt / Sports Shirt / Birthday Shirt
+  - **Category**: Work Shirt / Family Day Shirt / Sports Shirt / Birthday Shirt
   - **Printing**: DTF / Sublimation
   - **Quantity** (pcs)
   - **Total (RM)**, **deposit**, and **balance** (calculated automatically)
