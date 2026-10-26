@@ -553,8 +553,20 @@ document.addEventListener('click', ev => {
 
 // ---------- Key In form ----------
 
+// Next order number after the highest one used so far (PB0107 -> PB0108), counting the rows on the form too.
+function nextOrderNo() {
+  const used = entries.flatMap(e => e.lines.map(l => l.orderNo)).concat($$('#lines [name=orderNo]').map(i => i.value));
+  let best = null;
+  for (const v of used) {
+    const m = String(v || '').trim().match(/^([A-Za-z]*)(\d+)$/);
+    if (m && (!best || Number(m[2]) > best.n)) best = { prefix: m[1].toUpperCase(), n: Number(m[2]), width: m[2].length };
+  }
+  return best ? best.prefix + String(best.n + 1).padStart(best.width, '0') : '';
+}
+
 function addLine() {
   const node = $('#line-tpl').content.firstElementChild.cloneNode(true);
+  $('[name=orderNo]', node).value = nextOrderNo();
   $('[name=category]', node).innerHTML = CATEGORIES.map(c => `<option>${c}</option>`).join('');
   $('[name=printing]', node).innerHTML = PRINTINGS.map(p => `<option>${p}</option>`).join('');
   $('[name=source]', node).innerHTML = SOURCES.map(s => `<option>${s}</option>`).join('');
@@ -568,6 +580,7 @@ function addLine() {
 
 function readLines() {
   return $$('#lines .line').map(n => ({
+    orderNo: $('[name=orderNo]', n).value.trim().toUpperCase(),
     customer: $('[name=customer]', n).value.trim(),
     phone: $('[name=phone]', n).value.trim(),
     category: $('[name=category]', n).value,
@@ -758,29 +771,43 @@ async function onSubmitEntry(ev) {
 }
 
 // ---------- Share order to a WhatsApp group ----------
-// WhatsApp has no free way to post into a group automatically, so the app opens WhatsApp with the
-// message already written (wa.me/?text=...); staff pick the group and press Send.
+// WhatsApp has no free way to post into a group automatically. On a PC the app copies the photo, then
+// the details, and opens the group in WhatsApp Web for Ctrl+V; phones use the share menu.
 
-const photoLink = v => isDriveId(v) ? `https://drive.google.com/file/d/${v}/view` : '';
-
-function orderMessage(date, lines, deposits) {
-  const out = [`🧾 *NEW ORDER* · ${date}`];
-  let pcs = 0, sales = 0;
-  lines.forEach((l, i) => {
-    const amt = Number(l.amount) || 0, dep = deposits[i];
-    pcs += Number(l.qty) || 0;
-    sales += amt;
-    out.push('', `${lines.length > 1 ? `${i + 1}) ` : ''}*${l.customer || '(no name)'}*${l.phone ? ` · ${l.phone}` : ''}`,
-      `${l.qty} × ${l.category} · ${l.printing}`,
-      `Total ${rm(amt)} · Deposit ${rm(dep)} · Balance ${rm(amt - dep)}`);
-    if (l.source || l.delivery) out.push([l.source && `Source: ${l.source}`, l.delivery && `Delivery: ${l.delivery}`].filter(Boolean).join(' · '));
-    if (l.notes) out.push(`Notes: ${l.notes}`);
-    const links = (l.images || []).map(photoLink).filter(Boolean);
-    if (links.length) out.push('Photos:', ...links);
-  });
-  if (lines.length > 1) out.push('', `*Total: ${pcs} pcs · ${rm(sales)}*`);
-  return out.join('\n');
+// The message in the shop's own group format. items: [{ line, deposit, job }].
+function jobStatus(job) {
+  if (!job || job.deposit <= 0) return 'Waiting deposit';
+  if (job.complete) return 'Completed';
+  return job.current.label + (job[job.current.key] ? ` – ${job[job.current.key]}` : ' (pending)');
 }
+
+function orderMessage(items) {
+  const ticks = '✅✅✅✅✅';
+  const blocks = items.map(({ line: l, deposit, job }) => {
+    const amt = Number(l.amount) || 0;
+    const out = [
+      `🆕 ORDER${l.orderNo ? ` #${l.orderNo}` : ''}`,
+      `Nama: ${l.customer || '-'}`,
+      `No phone: ${l.phone || '-'}`,
+      `Item & Kuantiti: ${l.qty} × ${l.category} (${l.printing})`,
+      `Total: ${rm(amt)}`,
+      `Deposit: ${rm(deposit)}`,
+      `Baki: ${rm(amt - deposit)}`,
+      `Platform: ${l.source || '-'}`,
+      `Status: ${jobStatus(job)}`,
+      `Status Baju: ${job?.shirt || job?.order || '-'}`,
+    ];
+    if (l.delivery) out.push(`Delivery: ${l.delivery}`);
+    out.push('Nota:', l.notes || '');
+    return out.join('\n').trimEnd();
+  });
+  return [ticks, '', blocks.join('\n\n'), '', ticks].join('\n');
+}
+
+const shareItems = (entry, indexes) => {
+  const all = allJobs();
+  return indexes.map(i => ({ line: entry.lines[i], deposit: lineDeposit(entry, i), job: all.find(j => j.key === jobKey(entry, i)) }));
+};
 
 // Phones (and Chrome/Edge on Windows) can share photos + text straight into WhatsApp through the
 // device's share menu. The photos are loaded first, because sharing must start right on the button press.
@@ -824,7 +851,7 @@ async function orderCard(text, blobs) {
   const cells = imgs.length === 1 ? [[0, 0, W, 810]]
     : imgs.map((_, i) => { const w = (W - gap) / 2; return [(i % 2) * (w + gap), Math.floor(i / 2) * (w + gap), w, w]; });
   const photoH = imgs.length ? Math.max(...cells.map(c => c[1] + c[3])) : 0;
-  const lines = text.replace(/\*/g, '').replace(/RM /g, 'RM\u00a0').split('\n').filter(l => !/^(Photos:|https:\/\/drive\.google)/.test(l));
+  const lines = !text ? [] : text.replace(/\*/g, '').replace(/RM /g, 'RM\u00a0').split('\n').filter(l => !/^(Photos:|https:\/\/drive\.google)/.test(l));
 
   const c = document.createElement('canvas');
   const ctx = c.getContext('2d');
@@ -844,7 +871,7 @@ async function orderCard(text, blobs) {
   });
   const lineH = 48;
   c.width = W;
-  c.height = photoH + pad * 2 + wrapped.length * lineH;
+  c.height = photoH + (wrapped.length ? pad * 2 + wrapped.length * lineH : 0);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, c.height);
   imgs.forEach((img, i) => {
@@ -854,7 +881,7 @@ async function orderCard(text, blobs) {
     ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
   });
   ctx.fillStyle = '#0b2a4a';
-  ctx.fillRect(0, photoH, W, 10);
+  if (wrapped.length) ctx.fillRect(0, photoH, W, 10);
   ctx.textBaseline = 'top';
   wrapped.forEach(([t, i, bold], n) => {
     ctx.font = font(i === 0 ? 44 : 34, bold);
@@ -863,6 +890,8 @@ async function orderCard(text, blobs) {
   });
   return new Promise(resolve => c.toBlob(resolve, 'image/png'));
 }
+
+let waWindow = null;
 
 async function openShare(text, photos) {
   shareText = text;
@@ -873,32 +902,38 @@ async function openShare(text, photos) {
   $('#share-skip').textContent = 'Skip';
   $('#share-wa').href = 'https://wa.me/?text=' + encodeURIComponent(text);
   const phone = isPhone();
-  const groupBtn = $('#share-group');
+  const photoBtn = $('#share-group');
+  const detailsBtn = $('#share-details');
   const filesBtn = $('#share-files');
   const useGroup = !phone && canCopyImage();
   const useFiles = phone && photos.length && canShareFiles();
-  groupBtn.hidden = !useGroup;
+  photoBtn.hidden = !useGroup || !photos.length;
+  detailsBtn.hidden = !useGroup;
+  detailsBtn.textContent = photos.length ? '② Copy Details' : 'Copy Details & Open Group';
   filesBtn.hidden = !useFiles;
   $('#share-wa').textContent = useGroup || useFiles ? 'Text only' : 'Send to WhatsApp';
   $('#share-wa').classList.toggle('alt', !!(useGroup || useFiles));
+  $('#share-wa').hidden = useGroup;
   $('#share-note').textContent = useGroup
-    ? (groupUrl()
-      ? 'Copies the photos and order details as one picture and opens the WhatsApp group. There, press Ctrl+V, then Enter.'
-      : 'Copies the photos and order details as one picture: open the group in WhatsApp Web, press Ctrl+V, then Enter. (Owner: add the group link in Settings to open the group straight away.)')
+    ? (photos.length
+      ? '① copies the photo and opens the WhatsApp group: press Ctrl+V, then Enter. Come back here, press ②, then Ctrl+V and Enter in the group again.'
+      : 'Copies the details and opens the WhatsApp group: press Ctrl+V, then Enter.')
+      + (groupUrl() ? '' : ' (Owner: add the group link in Settings so the group opens by itself.)')
     : useFiles
       ? 'Send with Photos opens the share menu: pick WhatsApp, then the group, then Send. The message is also copied, so you can paste it if WhatsApp leaves it out.'
       : 'WhatsApp opens with the message ready: choose the group and press Send.';
   $('#share-modal').hidden = false;
-  if (!useGroup && !useFiles) return;
-  const btn = useGroup ? groupBtn : filesBtn;
+  if (!(useGroup && photos.length) && !useFiles) return;
+  const btn = useGroup ? photoBtn : filesBtn;
   btn.disabled = true;
+  const label = btn.textContent;
   btn.textContent = 'Loading photos…';
   let blobs = [];
   try { blobs = (await Promise.all(photos.map(v => photoBlob(v).catch(() => null)))).filter(Boolean); } catch { blobs = []; }
   if (useGroup) {
-    try { shareCard = await orderCard(text, blobs); } catch { shareCard = null; }
+    try { shareCard = blobs.length ? await orderCard('', blobs) : null; } catch { shareCard = null; }
     btn.disabled = !shareCard;
-    btn.textContent = shareCard ? (groupUrl() ? 'Copy & Open Group' : 'Copy Order Card') : 'Could not make the picture';
+    btn.textContent = shareCard ? label : 'Photo could not load';
   } else {
     shareFiles = blobs.map((b, i) => new File([b], `order-photo-${i + 1}.jpg`, { type: 'image/jpeg' }));
     btn.disabled = !shareFiles.length;
@@ -906,19 +941,39 @@ async function openShare(text, photos) {
   }
 }
 
+// Opens the group in WhatsApp Web, or brings that tab forward if the app opened it before.
+function showGroup() {
+  if (waWindow && !waWindow.closed) { try { waWindow.focus(); return; } catch { /* reopen */ } }
+  if (groupUrl()) waWindow = window.open(groupUrl(), 'jt-whatsapp');
+}
+
+function shareCopied(text) {
+  const done = $('#share-done');
+  done.hidden = false;
+  done.textContent = text;
+  $('#share-skip').textContent = 'Close';
+}
+
 async function onShareGroup() {
   try {
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': shareCard })]);
   } catch (err) {
-    alert('Could not copy the picture: ' + err.message + '\nUse "Text only" instead.');
+    alert('Could not copy the photo: ' + err.message);
     return;
   }
-  const done = $('#share-done');
-  done.hidden = false;
-  done.textContent = '✅ Copied! In the WhatsApp group press Ctrl+V, then Enter.';
-  $('#share-skip').textContent = 'Close';
-  // A named window: pressing Share again reuses the same WhatsApp Web tab.
-  if (groupUrl()) window.open(groupUrl(), 'jt-whatsapp');
+  shareCopied('✅ Photo copied! In the WhatsApp group press Ctrl+V, then Enter. Then come back and press ②.');
+  showGroup();
+}
+
+async function onShareDetails() {
+  try {
+    await navigator.clipboard.writeText(shareText);
+  } catch (err) {
+    alert('Could not copy the details: ' + err.message);
+    return;
+  }
+  shareCopied('✅ Details copied! In the WhatsApp group press Ctrl+V, then Enter.');
+  showGroup();
 }
 
 async function onShareFiles() {
@@ -933,13 +988,12 @@ async function onShareFiles() {
 
 // photos: the photos as picked (data URLs) right after saving, so nothing has to be downloaded again.
 function shareEntry(entry, photos) {
-  openShare(orderMessage(entry.date, entry.lines, entry.lines.map((_, i) => lineDeposit(entry, i))),
-    (photos || entry.lines.map(l => l.images || [])).flat());
+  openShare(orderMessage(shareItems(entry, entry.lines.map((_, i) => i))), (photos || entry.lines.map(l => l.images || [])).flat());
 }
 
 function shareJob(key) {
   const found = findLine(key);
-  if (found) openShare(orderMessage(found.line.orderDate || found.entry.date, [found.line], [lineDeposit(found.entry, found.index)]), found.line.images || []);
+  if (found) openShare(orderMessage(shareItems(found.entry, [found.index])), found.line.images || []);
 }
 
 // ---------- History ----------
@@ -953,7 +1007,7 @@ function monthEntries() {
 
 function lineDetail(l, deposit) {
   const parts = [
-    `${l.customer ? `<b>${esc(l.customer)}</b>` : ''}${l.phone ? ` (${esc(l.phone)})` : ''}`,
+    `${l.orderNo ? `#${esc(l.orderNo)} ` : ''}${l.customer ? `<b>${esc(l.customer)}</b>` : ''}${l.phone ? ` (${esc(l.phone)})` : ''}`,
     `${l.qty} × ${esc(l.category)} (${esc(l.printing)})${l.orderDate ? ` · ordered ${esc(l.orderDate)}` : ''}`,
     `Total ${rm(l.amount)} · Deposit ${rm(deposit)} · Balance ${rm((Number(l.amount) || 0) - deposit)}`,
   ];
@@ -1329,7 +1383,7 @@ function jobCard(job) {
     ${thumbs(job.images)}
     <div class="job-head">
       <div>
-        <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}${waLink(job.phone)}` : ''}
+        ${job.orderNo ? `<span class="order-no">#${esc(job.orderNo)}</span> ` : ''}<strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}${waLink(job.phone)}` : ''}
         <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ordered ${esc(job.date)}${job.delivery ? ` · delivery ${esc(job.delivery)}` : ''}</div>
         <div class="muted">Total ${rm(job.amount)} · Deposit ${rm(job.deposit)} · Balance ${rm(balance)}</div>
         ${job.notes ? `<div class="muted">Notes: ${esc(job.notes)}</div>` : ''}
@@ -1353,7 +1407,7 @@ function waitingCard(job) {
     ${thumbs(job.images)}
     <div class="job-head">
       <div>
-        <strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}${waLink(job.phone)}` : ''}
+        ${job.orderNo ? `<span class="order-no">#${esc(job.orderNo)}</span> ` : ''}<strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}${waLink(job.phone)}` : ''}
         <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ${rm(job.amount)} · ordered ${esc(job.date)}</div>
       </div>
       <div class="job-status"><button type="button" class="edit-btn" data-edit="${esc(job.key)}">✏️ Edit</button>
@@ -1385,7 +1439,7 @@ function renderJobs() {
   ].join('');
   $('#job-stages').innerHTML = Object.entries(counts).map(([k, v]) => `<span class="chip">${esc(k)}: <b>${v}</b></span>`).join('');
 
-  const match = j => !q || `${j.customer} ${j.phone}`.toLowerCase().includes(q);
+  const match = j => !q || `${j.orderNo || ''} ${j.customer} ${j.phone}`.toLowerCase().includes(q);
   let shown;
   if (filter === 'waiting') shown = list.filter(j => j.deposit <= 0);
   else if (filter === 'complete') shown = started.filter(j => j.complete);
@@ -1421,6 +1475,7 @@ function openEdit(key) {
   f.printing.innerHTML = opts(PRINTINGS, l.printing);
   f.source.innerHTML = opts(SOURCES, l.source);
   f.orderDate.value = l.orderDate || found.entry.date;
+  f.orderNo.value = l.orderNo || '';
   f.customer.value = l.customer || '';
   f.phone.value = l.phone || '';
   f.qty.value = l.qty || '';
@@ -1444,6 +1499,7 @@ async function onSaveEdit(ev) {
   const line = {
     ...found.line,
     orderDate: f.orderDate.value || found.entry.date,
+    orderNo: f.orderNo.value.trim().toUpperCase(),
     customer: f.customer.value.trim(),
     phone: f.phone.value.trim(),
     category: f.category.value,
@@ -1849,6 +1905,7 @@ $('#edit-form').addEventListener('submit', onSaveEdit);
 initPhotos($('#edit-form .photos'), []);
 $('#share-files').addEventListener('click', onShareFiles);
 $('#share-group').addEventListener('click', onShareGroup);
+$('#share-details').addEventListener('click', onShareDetails);
 $('#share-skip').addEventListener('click', () => { $('#share-modal').hidden = true; });
 $('#share-wa').addEventListener('click', () => { $('#share-modal').hidden = true; });
 $('#img-close').addEventListener('click', () => { $('#img-modal').hidden = true; });

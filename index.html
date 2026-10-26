@@ -13,7 +13,7 @@
   <link rel="icon" href="icons/favicon-64.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <!-- Change ?v= whenever style.css or app.js changes, so browsers load the new files. -->
-  <link rel="stylesheet" href="style.css?v=20261027a">
+  <link rel="stylesheet" href="style.css?v=20261027b">
 </head>
 <body>
   <header>
@@ -107,6 +107,7 @@
 
       <template id="line-tpl">
         <div class="line">
+          <label>Order No. <input type="text" name="orderNo" placeholder="e.g. PB0107" autocapitalize="characters"></label>
           <label>Customer Name <input type="text" name="customer" required placeholder="e.g. ABC Sdn Bhd"></label>
           <label>Phone No. <input type="tel" name="phone" inputmode="tel" placeholder="e.g. 012-3456789"></label>
           <label>Category
@@ -143,7 +144,7 @@
             <option value="all">All</option>
           </select>
         </label>
-        <label>Search <input type="search" id="job-search" placeholder="Customer name or phone"></label>
+        <label>Search <input type="search" id="job-search" placeholder="Order no., customer name or phone"></label>
       </div>
       <p class="muted">An order becomes a job once the customer pays a deposit. Update each step as work moves on. A job is complete when it is sent by post or collected.</p>
       <div id="job-list"></div>
@@ -466,6 +467,7 @@
       <h2>Edit Order</h2>
       <div class="edit-grid">
         <label>Order Date <input type="date" name="orderDate" required></label>
+        <label>Order No. <input type="text" name="orderNo" placeholder="e.g. PB0107"></label>
         <label>Customer Name <input type="text" name="customer" required></label>
         <label>Phone No. <input type="tel" name="phone" inputmode="tel"></label>
         <label>Category <select name="category"></select></label>
@@ -521,7 +523,8 @@
       <pre id="share-preview" class="share-preview"></pre>
       <p id="share-done" class="msg ok" hidden></p>
       <div class="btn-row">
-        <button type="button" id="share-group" class="btn-wa" hidden>Copy &amp; Open Group</button>
+        <button type="button" id="share-group" class="btn-wa" hidden>① Copy Photo &amp; Open Group</button>
+        <button type="button" id="share-details" class="btn-wa" hidden>② Copy Details</button>
         <button type="button" id="share-files" class="btn-wa" hidden>Send with Photos</button>
         <a id="share-wa" class="btn-wa" href="#" target="_blank" rel="noopener">Send to WhatsApp</a>
         <button type="button" id="share-skip" class="secondary">Skip</button>
@@ -530,6 +533,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261027a"></script>
+  <script src="app.js?v=20261027b"></script>
 </body>
 </html>

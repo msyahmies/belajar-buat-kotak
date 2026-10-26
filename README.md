@@ -7,6 +7,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 **Sales / Orders** (Key In tab):
 - **Order date** at the top (defaults to today, can be changed). Job age colours count from this date
 - One or more **sales rows** (one row per order), each with:
+  - **Order No.** (e.g. PB0107): filled in automatically with the next number after the highest one used; can be changed. Shown on the job card and searchable
   - **Customer name** and **phone no.**
   - **Category**: Work Shirt / Family Day Shirt / Sports Shirt / Birthday Shirt
   - **Printing**: DTF / Sublimation
@@ -71,7 +72,8 @@ After staff save a key in, the app opens the **Jobs** tab.
 - Top cards show active, overdue, completed and waiting-deposit jobs, plus how many jobs are at each step
 - Jobs are sorted by expected delivery date, with **Due in X days** / **Overdue** badges
 - After a key in is saved, the app offers **Send to WhatsApp**: WhatsApp opens with the order details (customer, phone, items, total, deposit, balance, notes, photo links) already written; choose the staff group and press Send. Each job also has a **📤 Share** button to send it again
-  - On a PC with WhatsApp Web: **Copy & Open Group** copies one picture (the product photos with the order details under them) and opens the shop's WhatsApp group; press **Ctrl+V** then **Enter**. Set the group's invite link once in **Settings → WhatsApp group invite link** (it is synced to every device)
+  - The message uses the shop's group format: ✅ line, 🆕 ORDER #no, Nama, No phone, Item & Kuantiti, Total, Deposit, Baki, Platform, Status (current job step), Status Baju, Nota
+  - On a PC with WhatsApp Web: **① Copy Photo & Open Group** copies the product photo(s) and opens the shop's WhatsApp group; press **Ctrl+V**, **Enter**. Then **② Copy Details**, and **Ctrl+V**, **Enter** in the group again. Set the group's invite link once in **Settings → WhatsApp group invite link** (it is synced to every device)
   - On a phone, **Send with Photos** attaches the product photos too through the device's share menu (pick WhatsApp, then the group). The message is copied as well, in case WhatsApp drops the text. Sharing photos from a job later needs the latest `Code.gs`
 - Press the green **WhatsApp** icon next to the phone number to open a chat with the customer. It opens in the WhatsApp logged in on that device, so log in WhatsApp Web / WhatsApp Desktop with the shop's number on each staff PC
 - Press **Delete** on a job to remove it (owner PIN). This removes the order and its sale too; other jobs keep their progress

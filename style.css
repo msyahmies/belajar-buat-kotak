@@ -311,3 +311,4 @@ input.oh-on { width: 20px; height: 20px; margin: 0; accent-color: var(--navy); c
 .photos { border-radius: 10px; padding: 6px; margin-left: -6px; margin-right: -6px; outline: none; }
 .photos.target { background: var(--accent-soft); }
 .photos.drop { background: var(--accent-soft); box-shadow: 0 0 0 2px var(--navy) inset; }
+.order-no { display: inline-block; background: var(--navy); color: #fff; font-weight: 700; font-size: 0.8rem; padding: 2px 8px; border-radius: 6px; vertical-align: middle; }
