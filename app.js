@@ -669,20 +669,49 @@ function sizeSummary(sizes) {
 
 // ---------- Key In form ----------
 
-// Next order number after the highest one used so far (PB0107 -> PB0108), counting the rows on the form too.
-function nextOrderNo() {
-  const used = entries.flatMap(e => e.lines.map(l => l.orderNo)).concat($$('#lines [name=orderNo]').map(i => i.value));
+// Order numbers. With a prefix set in Settings (e.g. PB) the number is given automatically:
+// the highest PB number used so far + 1 (or the "first number"), assigned again when the order is saved.
+// Without a prefix: the next number after the highest one used, still editable.
+const orderPrefix = () => String(overhead.orderPrefix || '').trim().toUpperCase();
+
+function nextOrderNo(skip = 0) {
+  const prefix = orderPrefix();
+  const used = entries.flatMap(e => e.lines.map(l => String(l.orderNo || '').trim().toUpperCase()));
+  if (prefix) {
+    const re = new RegExp(`^${prefix.replace(/[^A-Z0-9]/g, '')}(\\d+)$`);
+    let max = 0, width = 4;
+    for (const v of used) {
+      const m = v.match(re);
+      if (m) { max = Math.max(max, Number(m[1])); width = Math.max(width, m[1].length); }
+    }
+    const n = (max ? max + 1 : Number(overhead.orderStart) || 1) + skip;
+    return prefix + String(n).padStart(width, '0');
+  }
   let best = null;
-  for (const v of used) {
+  for (const v of used.concat($$('#lines [name=orderNo]').map(i => i.value))) {
     const m = String(v || '').trim().match(/^([A-Za-z]*)(\d+)$/);
     if (m && (!best || Number(m[2]) > best.n)) best = { prefix: m[1].toUpperCase(), n: Number(m[2]), width: m[2].length };
   }
   return best ? best.prefix + String(best.n + 1).padStart(best.width, '0') : '';
 }
 
+// With a prefix, the Order No. boxes on the form show the numbers they will get (read-only).
+function refreshOrderNos() {
+  if (!orderPrefix()) {
+    $$('#lines [name=orderNo]').forEach(i => { i.readOnly = false; i.classList.remove('auto-qty'); });
+    return;
+  }
+  $$('#lines [name=orderNo]').forEach((i, n) => {
+    i.value = nextOrderNo(n);
+    i.readOnly = true;
+    i.classList.add('auto-qty');
+    i.title = 'Given automatically when the order is saved';
+  });
+}
+
 function addLine() {
   const node = $('#line-tpl').content.firstElementChild.cloneNode(true);
-  $('[name=orderNo]', node).value = nextOrderNo();
+  $('[name=orderNo]', node).value = orderPrefix() ? '' : nextOrderNo();
   $('[name=category]', node).innerHTML = CATEGORIES.map(c => `<option>${c}</option>`).join('');
   $('[name=printing]', node).innerHTML = PRINTINGS.map(p => `<option>${p}</option>`).join('');
   $('[name=source]', node).innerHTML = SOURCES.map(s => `<option>${s}</option>`).join('');
@@ -692,7 +721,9 @@ function addLine() {
   $('.remove', node).addEventListener('click', () => {
     if ($$('#lines .line').length > 1) node.remove();
     updateFormTotal();
+    refreshOrderNos();
   });
+  refreshOrderNos();
 }
 
 function readLines() {
@@ -865,11 +896,19 @@ async function onSubmitEntry(ev) {
     const progress = () => { msg.className = 'msg'; msg.textContent = `Uploading photos ${++done}/${total}…`; };
     const picked = entry.lines.map(l => [...l.images]);
     for (const l of entry.lines) l.images = await uploadPhotos(l.images, `${entry.date} ${l.customer || 'order'}`, progress);
+    if (orderPrefix()) {
+      // Take the numbers from the latest orders in Google Sheet, so another PC's order is counted.
+      if (settings.syncUrl) {
+        const data = await remote({ action: 'list' });
+        entries = normalizeEntries(data.entries);
+      }
+      entry.lines.forEach((l, i) => { l.orderNo = nextOrderNo(i); });
+    }
     if (settings.syncUrl) await remote({ action: 'add', entry });
     entries.push(entry);
     save(LS_ENTRIES, entries);
     msg.className = 'msg ok';
-    msg.textContent = `Saved: ${rm(entryTotals(entry).sales)} for ${entry.date}`;
+    msg.textContent = `Saved${entry.lines[0].orderNo ? ` ${entry.lines.map(l => '#' + l.orderNo).join(', ')}` : ''}: ${rm(entryTotals(entry).sales)} for ${entry.date}`;
     resetForm();
     renderAll();
     $('#job-filter').value = entry.lines.some(l => l.deposit > 0) ? 'active' : 'waiting';
@@ -1768,7 +1807,8 @@ function readOverheadForm() {
     .map(n => ({ name: $('[name=name]', n).value.trim(), amount: Number($('[name=amount]', n).value) || 0, on: $('[name=on]', n).checked }))
     .filter(i => i.name);
   o.pinHash = pinHash; // the owner PIN travels with the overhead record
-  o.waGroup = overhead.waGroup || ''; // and so does the WhatsApp group link (Settings)
+  // and so do the shop-wide Settings (WhatsApp group link, order number prefix)
+  ['waGroup', 'orderPrefix', 'orderStart'].forEach(k => { if (overhead[k]) o[k] = overhead[k]; });
   return o;
 }
 
@@ -1904,9 +1944,10 @@ async function onSubmitSettings(ev) {
   settings.target = Number(f.target.value) || 0;
   settings.syncUrl = f.syncUrl.value.trim();
   save(LS_SETTINGS, settings);
-  const wa = f.waGroup.value.trim();
-  const waChanged = wa !== (overhead.waGroup || '');
-  if (waChanged) { overhead = { ...overhead, waGroup: wa }; save(LS_OVERHEAD, overhead); }
+  // Shop-wide settings travel with the overhead record, so every device gets them.
+  const shared = { waGroup: f.waGroup.value.trim(), orderPrefix: f.orderPrefix.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''), orderStart: Number(f.orderStart.value) || 0 };
+  const waChanged = Object.keys(shared).some(k => shared[k] !== (overhead[k] || (k === 'orderStart' ? 0 : '')));
+  if (waChanged) { overhead = { ...overhead, ...shared }; save(LS_OVERHEAD, overhead); }
   try {
     if (settings.syncUrl && !urlChanged) await remote({ action: 'setTarget', target: settings.target });
     if (settings.syncUrl && !urlChanged && waChanged) await remote({ action: 'setOverhead', overhead });
@@ -1934,7 +1975,12 @@ function renderAll() {
   const f = $('#settings-form');
   f.target.value = settings.target || '';
   f.syncUrl.value = settings.syncUrl || '';
-  if (document.activeElement !== f.waGroup) f.waGroup.value = overhead.waGroup || '';
+  if (![f.waGroup, f.orderPrefix, f.orderStart].includes(document.activeElement)) {
+    f.waGroup.value = overhead.waGroup || '';
+    f.orderPrefix.value = overhead.orderPrefix || '';
+    f.orderStart.value = overhead.orderStart || '';
+  }
+  refreshOrderNos();
 }
 
 function showTab(name) {

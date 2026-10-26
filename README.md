@@ -7,7 +7,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 **Sales / Orders** (Key In tab):
 - **Order date** at the top (defaults to today, can be changed). Job age colours count from this date
 - One or more **sales rows** (one row per order), each with:
-  - **Order No.** (e.g. PB0107): filled in automatically with the next number after the highest one used; can be changed. Shown on the job card and searchable
+  - **Order No.** (e.g. PB0107): set the letters once in **Settings → Order No. prefix** (and the first number, if no order uses that prefix yet). Each new order then gets the next number automatically when it is saved, checked against Google Sheet so two PCs never give the same number. Without a prefix the next number is suggested and can be changed. Fix a number later with **✏️ Edit**. Shown on the job card and searchable
   - **Customer name** and **phone no.**
   - **Category**: Work Shirt / Family Day Shirt / Sports Shirt / Birthday Shirt
   - **Printing**: DTF / Sublimation

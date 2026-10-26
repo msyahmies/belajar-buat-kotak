@@ -13,7 +13,7 @@
   <link rel="icon" href="icons/favicon-64.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <!-- Change ?v= whenever style.css or app.js changes, so browsers load the new files. -->
-  <link rel="stylesheet" href="style.css?v=20261027e">
+  <link rel="stylesheet" href="style.css?v=20261027f">
 </head>
 <body>
   <header>
@@ -304,6 +304,11 @@
           <input type="url" name="syncUrl" placeholder="https://script.google.com/macros/s/.../exec">
         </label>
         <p class="muted">Leave the URL empty if you only use one device. Data is then saved in this browser. See the README for how to set up Google Sheet.</p>
+        <div class="grid">
+          <label>Order No. prefix <input type="text" name="orderPrefix" placeholder="e.g. PB" maxlength="6" autocapitalize="characters"></label>
+          <label>First number (only if no order has this prefix yet) <input type="number" name="orderStart" min="1" placeholder="e.g. 108"></label>
+        </div>
+        <p class="muted">With a prefix, every new order gets the next number automatically when it is saved (PB0108, PB0109 …), checked against Google Sheet so two staff never get the same number.</p>
         <label>WhatsApp group invite link (for Share on PC)
           <input type="url" name="waGroup" placeholder="https://chat.whatsapp.com/...">
         </label>
@@ -537,6 +542,6 @@
 
   <datalist id="item-names"><option>Baseball Cap</option><option>Trucker Cap</option><option>Snapback</option><option>Apron</option></datalist>
 
-  <script src="app.js?v=20261027e"></script>
+  <script src="app.js?v=20261027f"></script>
 </body>
 </html>
