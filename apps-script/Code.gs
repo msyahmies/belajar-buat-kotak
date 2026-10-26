@@ -4,6 +4,8 @@
  * then Deploy > New deployment > Web app (Execute as: Me, Access: Anyone).
  */
 
+// Shown when the /exec URL is opened, to check which version is deployed.
+const CODE_VERSION = '2026-10-26';
 const TIME_ZONE = 'Asia/Kuala_Lumpur';
 const SHEET_ENTRIES = 'Sales';
 const SHEET_SETTINGS = 'Settings';
@@ -23,7 +25,7 @@ const HEADER = ['ID', 'Date', 'Leads In', 'Leads Converted', '% Leads Converted'
 
 // Opening the /exec URL in a browser shows this, to confirm the right code is deployed.
 function doGet() {
-  return json({ ok: true, message: 'Shop Sales Tracker is connected', sheet: SpreadsheetApp.getActiveSpreadsheet().getName() });
+  return json({ ok: true, message: 'Shop Sales Tracker is connected', version: CODE_VERSION, sheet: SpreadsheetApp.getActiveSpreadsheet().getName() });
 }
 
 function doPost(e) {
@@ -48,7 +50,7 @@ function doPost(e) {
       case 'deleteJob': deleteRowById(SHEET_JOBS, req.id); return json({ ok: true });
       case 'setOverhead': setOverhead(req.overhead); return json({ ok: true });
       case 'setTarget': setTarget(req.target); return json({ ok: true });
-      default: return json({ ok: false, error: 'Invalid action' });
+      default: return json({ ok: false, error: 'Invalid action: ' + req.action + ' (deployed Code.gs version ' + CODE_VERSION + ')' });
     }
   } catch (err) {
     return json({ ok: false, error: String(err) });
