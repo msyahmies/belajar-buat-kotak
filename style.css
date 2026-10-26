@@ -333,3 +333,4 @@ input.oh-on { width: 20px; height: 20px; margin: 0; accent-color: var(--navy); c
 .add-size { border: 1px dashed var(--navy); background: none; color: var(--navy); padding: 5px 12px; font-size: 0.9rem; }
 input.auto-qty { background: var(--accent-soft); font-weight: 800; }
 .size-sum { font-size: 0.85rem; }
+.size-top select { width: auto; padding: 6px 8px; font-size: 0.85rem; }

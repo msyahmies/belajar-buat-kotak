@@ -560,6 +560,8 @@ const SIZE_GROUPS = {
   kids: { label: 'Kanak-kanak', sizes: ['22', '24', '26', '28', '30', '32'] },
   free: { label: 'Free Size', sizes: ['FREE'] },
 };
+const SLEEVES = ['Pendek', 'Panjang', 'Muslimah'];
+const NECKS = ['Round Neck', 'Berkolar'];
 const FREE_ITEMS = /\b(cap|snapback|apron|topi)\b/i;
 const sizeTotal = row => Object.values(row.qty || {}).reduce((t, n) => t + (Number(n) || 0), 0);
 const sizesTotal = sizes => (sizes || []).reduce((t, r) => t + sizeTotal(r), 0);
@@ -576,6 +578,8 @@ function sizeRowHtml(row) {
     <div class="size-top">
       <input name="code" list="item-names" placeholder="${g === 'free' ? 'Item, e.g. Baseball Cap' : 'Shirt code, e.g. QD0402'}" value="${esc(row.code || '')}">
       <input name="color" placeholder="Warna" value="${esc(row.color || '')}">
+      ${g === 'free' ? '' : `<select name="sleeve" title="Lengan">${SLEEVES.map(v => `<option value="${v}"${v === (row.sleeve || 'Pendek') ? ' selected' : ''}>Lengan ${v}</option>`).join('')}</select>
+      <select name="neck" title="Leher">${NECKS.map(v => `<option${v === (row.neck || 'Round Neck') ? ' selected' : ''}>${v}</option>`).join('')}</select>`}
       <span class="size-group">${Object.entries(SIZE_GROUPS).map(([k, v]) => `<button type="button" data-group="${k}" class="${k === g ? 'on' : ''}">${v.label}</button>`).join('')}</span>
       <span class="size-total">Jumlah: ${sizeTotal(row)}</span>
       <button type="button" class="rm-size" title="Remove">✕</button>
@@ -587,7 +591,9 @@ function sizeRowHtml(row) {
 function readSizeRow(n) {
   const qty = {};
   $$('[data-size]', n).forEach(i => { const v = Number(i.value) || 0; if (v > 0) qty[i.dataset.size] = v; });
-  return { code: $('[name=code]', n).value.trim(), color: $('[name=color]', n).value.trim(), group: n.dataset.group, qty };
+  const row = { code: $('[name=code]', n).value.trim(), color: $('[name=color]', n).value.trim(), group: n.dataset.group, qty };
+  if (row.group !== 'free') { row.sleeve = $('[name=sleeve]', n).value; row.neck = $('[name=neck]', n).value; }
+  return row;
 }
 
 const readSizes = box => $$('.size-row', box).map(readSizeRow).filter(r => sizeTotal(r) > 0);
@@ -647,8 +653,8 @@ function initSizes(box, sizes) {
 // "QD0402-HITAM / L-10" blocks for the WhatsApp message.
 function sizeText(sizes) {
   return (sizes || []).map(r => {
-    const head = [r.code || (r.group === 'free' ? 'ITEM' : 'BAJU'), r.color].filter(Boolean).join('-').toUpperCase()
-      + (r.group === 'kids' ? ' (KANAK-KANAK)' : '');
+    const extra = [r.group === 'kids' && 'KANAK-KANAK', r.neck, r.sleeve && `LENGAN ${r.sleeve}`].filter(Boolean).join(', ').toUpperCase();
+    const head = [r.code || (r.group === 'free' ? 'ITEM' : 'BAJU'), r.color].filter(Boolean).join('-').toUpperCase() + (extra ? ` (${extra})` : '');
     const rows = Object.entries(r.qty).map(([sz, n]) => `${sz === 'FREE' ? 'FREE SIZE' : sz}-${n}`);
     return [head, ...rows].join('\n');
   }).join('\n\n');
@@ -656,7 +662,8 @@ function sizeText(sizes) {
 
 // One short line for job cards and History: "QD0402 Hitam: L×10 · HC2602: S×1, L×1".
 function sizeSummary(sizes) {
-  return (sizes || []).map(r => `${[r.code, r.color].filter(Boolean).join(' ') || 'Item'}${r.group === 'kids' ? ' (kids)' : ''}: `
+  return (sizes || []).map(r => `${[r.code, r.color].filter(Boolean).join(' ') || 'Item'}`
+    + `${[r.group === 'kids' && 'kids', r.neck, r.sleeve && `lengan ${r.sleeve.toLowerCase()}`].filter(Boolean).map(v => ` (${v})`).join('').replace(/\) \(/g, ', ')}: `
     + Object.entries(r.qty).map(([sz, n]) => sz === 'FREE' ? `${n} pcs` : `${sz}×${n}`).join(', ')).join(' · ');
 }
 
