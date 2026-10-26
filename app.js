@@ -797,32 +797,128 @@ async function photoBlob(v) {
   return (await fetch('data:image/jpeg;base64,' + res.data)).blob();
 }
 
+// On a PC with WhatsApp Web: "Copy & Open Group" copies one picture (the product photos with the
+// order details under them) and opens the shop's group, so staff just press Ctrl+V and Enter.
+// Phones use the share menu instead, which can attach the photos themselves.
+const isPhone = () => matchMedia('(pointer: coarse)').matches;
+const canCopyImage = () => !!(window.ClipboardItem && navigator.clipboard?.write);
+let shareCard = null;
+
+function groupUrl() {
+  const m = String(overhead.waGroup || '').match(/chat\.whatsapp\.com\/(?:invite\/)?([\w-]+)/);
+  return m ? `https://web.whatsapp.com/accept?code=${m[1]}` : '';
+}
+
+const loadImg = blob => new Promise((resolve, reject) => {
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('photo')); };
+  img.src = url;
+});
+
+// Product photos on top (1 large, or a 2-per-row grid), the order details below, as one PNG.
+async function orderCard(text, blobs) {
+  const W = 1080, pad = 48, gap = 8;
+  const imgs = (await Promise.all(blobs.map(b => loadImg(b).catch(() => null)))).filter(Boolean);
+  const cells = imgs.length === 1 ? [[0, 0, W, 810]]
+    : imgs.map((_, i) => { const w = (W - gap) / 2; return [(i % 2) * (w + gap), Math.floor(i / 2) * (w + gap), w, w]; });
+  const photoH = imgs.length ? Math.max(...cells.map(c => c[1] + c[3])) : 0;
+  const lines = text.replace(/\*/g, '').replace(/RM /g, 'RM\u00a0').split('\n').filter(l => !/^(Photos:|https:\/\/drive\.google)/.test(l));
+
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d');
+  const font = (size, bold) => `${bold ? '700 ' : ''}${size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+  // Wrap the text first to know how tall the card must be.
+  ctx.font = font(34);
+  const wrapped = [];
+  lines.forEach((l, i) => {
+    const bold = i === 0 || /^(\d+\) )?[^·]+·\s?\+?\d|^Total:/.test(l) || (i > 0 && lines[i - 1] === '');
+    let cur = '';
+    for (const word of l.split(' ')) {
+      const t = cur ? cur + ' ' + word : word;
+      ctx.font = font(i === 0 ? 44 : 34, bold);
+      if (ctx.measureText(t).width > W - pad * 2 && cur) { wrapped.push([cur, i, bold]); cur = word; } else cur = t;
+    }
+    wrapped.push([cur, i, bold]);
+  });
+  const lineH = 48;
+  c.width = W;
+  c.height = photoH + pad * 2 + wrapped.length * lineH;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, c.height);
+  imgs.forEach((img, i) => {
+    const [x, y, w, h] = cells[i];
+    const k = Math.max(w / img.width, h / img.height);
+    const sw = w / k, sh = h / k;
+    ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
+  });
+  ctx.fillStyle = '#0b2a4a';
+  ctx.fillRect(0, photoH, W, 10);
+  ctx.textBaseline = 'top';
+  wrapped.forEach(([t, i, bold], n) => {
+    ctx.font = font(i === 0 ? 44 : 34, bold);
+    ctx.fillStyle = i === 0 ? '#0b2a4a' : '#1f2d3d';
+    ctx.fillText(t, pad, photoH + pad + n * lineH);
+  });
+  return new Promise(resolve => c.toBlob(resolve, 'image/png'));
+}
+
 async function openShare(text, photos) {
   shareText = text;
   shareFiles = [];
+  shareCard = null;
   $('#share-preview').textContent = text;
+  $('#share-done').hidden = true;
+  $('#share-skip').textContent = 'Skip';
   $('#share-wa').href = 'https://wa.me/?text=' + encodeURIComponent(text);
-  const btn = $('#share-files');
-  const withPhotos = photos.length && canShareFiles();
-  btn.hidden = !withPhotos;
-  $('#share-wa').textContent = withPhotos ? 'Text only' : 'Send to WhatsApp';
-  $('#share-wa').classList.toggle('alt', !!withPhotos);
-  $('#share-note').textContent = withPhotos
-    ? 'Send with Photos opens the share menu: pick WhatsApp, then the group, then Send. The message is also copied, so you can paste it if WhatsApp leaves it out.'
-    : 'WhatsApp opens with the message ready: choose the group and press Send.'
-      + (photos.length ? ' (Sending photos needs Chrome or Edge, or the app on a phone.)' : '');
+  const phone = isPhone();
+  const groupBtn = $('#share-group');
+  const filesBtn = $('#share-files');
+  const useGroup = !phone && canCopyImage();
+  const useFiles = phone && photos.length && canShareFiles();
+  groupBtn.hidden = !useGroup;
+  filesBtn.hidden = !useFiles;
+  $('#share-wa').textContent = useGroup || useFiles ? 'Text only' : 'Send to WhatsApp';
+  $('#share-wa').classList.toggle('alt', !!(useGroup || useFiles));
+  $('#share-note').textContent = useGroup
+    ? (groupUrl()
+      ? 'Copies the photos and order details as one picture and opens the WhatsApp group. There, press Ctrl+V, then Enter.'
+      : 'Copies the photos and order details as one picture: open the group in WhatsApp Web, press Ctrl+V, then Enter. (Owner: add the group link in Settings to open the group straight away.)')
+    : useFiles
+      ? 'Send with Photos opens the share menu: pick WhatsApp, then the group, then Send. The message is also copied, so you can paste it if WhatsApp leaves it out.'
+      : 'WhatsApp opens with the message ready: choose the group and press Send.';
   $('#share-modal').hidden = false;
-  if (!withPhotos) return;
+  if (!useGroup && !useFiles) return;
+  const btn = useGroup ? groupBtn : filesBtn;
   btn.disabled = true;
   btn.textContent = 'Loading photos…';
-  try {
-    const blobs = await Promise.all(photos.map(photoBlob));
-    shareFiles = blobs.filter(Boolean).map((b, i) => new File([b], `order-photo-${i + 1}.jpg`, { type: 'image/jpeg' }));
-  } catch (err) {
-    shareFiles = [];
+  let blobs = [];
+  try { blobs = (await Promise.all(photos.map(v => photoBlob(v).catch(() => null)))).filter(Boolean); } catch { blobs = []; }
+  if (useGroup) {
+    try { shareCard = await orderCard(text, blobs); } catch { shareCard = null; }
+    btn.disabled = !shareCard;
+    btn.textContent = shareCard ? (groupUrl() ? 'Copy & Open Group' : 'Copy Order Card') : 'Could not make the picture';
+  } else {
+    shareFiles = blobs.map((b, i) => new File([b], `order-photo-${i + 1}.jpg`, { type: 'image/jpeg' }));
+    btn.disabled = !shareFiles.length;
+    btn.textContent = shareFiles.length ? `Send with ${shareFiles.length} Photo${shareFiles.length > 1 ? 's' : ''}` : 'Photos could not load';
   }
-  btn.disabled = !shareFiles.length;
-  btn.textContent = shareFiles.length ? `Send with ${shareFiles.length} Photo${shareFiles.length > 1 ? 's' : ''}` : 'Photos could not load';
+}
+
+async function onShareGroup() {
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': shareCard })]);
+  } catch (err) {
+    alert('Could not copy the picture: ' + err.message + '\nUse "Text only" instead.');
+    return;
+  }
+  const done = $('#share-done');
+  done.hidden = false;
+  done.textContent = '✅ Copied! In the WhatsApp group press Ctrl+V, then Enter.';
+  $('#share-skip').textContent = 'Close';
+  // A named window: pressing Share again reuses the same WhatsApp Web tab.
+  if (groupUrl()) window.open(groupUrl(), 'jt-whatsapp');
 }
 
 async function onShareFiles() {
@@ -1492,6 +1588,7 @@ function readOverheadForm() {
     .map(n => ({ name: $('[name=name]', n).value.trim(), amount: Number($('[name=amount]', n).value) || 0, on: $('[name=on]', n).checked }))
     .filter(i => i.name);
   o.pinHash = pinHash; // the owner PIN travels with the overhead record
+  o.waGroup = overhead.waGroup || ''; // and so does the WhatsApp group link (Settings)
   return o;
 }
 
@@ -1627,8 +1724,12 @@ async function onSubmitSettings(ev) {
   settings.target = Number(f.target.value) || 0;
   settings.syncUrl = f.syncUrl.value.trim();
   save(LS_SETTINGS, settings);
+  const wa = f.waGroup.value.trim();
+  const waChanged = wa !== (overhead.waGroup || '');
+  if (waChanged) { overhead = { ...overhead, waGroup: wa }; save(LS_OVERHEAD, overhead); }
   try {
     if (settings.syncUrl && !urlChanged) await remote({ action: 'setTarget', target: settings.target });
+    if (settings.syncUrl && !urlChanged && waChanged) await remote({ action: 'setOverhead', overhead });
     msg.className = 'msg ok';
     msg.textContent = 'Settings saved.';
   } catch (e) {
@@ -1653,6 +1754,7 @@ function renderAll() {
   const f = $('#settings-form');
   f.target.value = settings.target || '';
   f.syncUrl.value = settings.syncUrl || '';
+  if (document.activeElement !== f.waGroup) f.waGroup.value = overhead.waGroup || '';
 }
 
 function showTab(name) {
@@ -1746,6 +1848,7 @@ $('#job-list').addEventListener('click', ev => {
 $('#edit-form').addEventListener('submit', onSaveEdit);
 initPhotos($('#edit-form .photos'), []);
 $('#share-files').addEventListener('click', onShareFiles);
+$('#share-group').addEventListener('click', onShareGroup);
 $('#share-skip').addEventListener('click', () => { $('#share-modal').hidden = true; });
 $('#share-wa').addEventListener('click', () => { $('#share-modal').hidden = true; });
 $('#img-close').addEventListener('click', () => { $('#img-modal').hidden = true; });

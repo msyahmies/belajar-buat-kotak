@@ -13,7 +13,7 @@
   <link rel="icon" href="icons/favicon-64.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <!-- Change ?v= whenever style.css or app.js changes, so browsers load the new files. -->
-  <link rel="stylesheet" href="style.css?v=20261026d">
+  <link rel="stylesheet" href="style.css?v=20261027a">
 </head>
 <body>
   <header>
@@ -302,6 +302,10 @@
           <input type="url" name="syncUrl" placeholder="https://script.google.com/macros/s/.../exec">
         </label>
         <p class="muted">Leave the URL empty if you only use one device. Data is then saved in this browser. See the README for how to set up Google Sheet.</p>
+        <label>WhatsApp group invite link (for Share on PC)
+          <input type="url" name="waGroup" placeholder="https://chat.whatsapp.com/...">
+        </label>
+        <p class="muted">In WhatsApp, open the group → group info → <b>Invite via link</b> → Copy link. Saved to Google Sheet, so every staff PC gets it.</p>
         <button type="submit">Save Settings</button>
         <p id="settings-msg" class="msg"></p>
       </form>
@@ -515,7 +519,9 @@
       <h2>✅ Order Saved</h2>
       <p>Send the order details to the WhatsApp group?</p>
       <pre id="share-preview" class="share-preview"></pre>
+      <p id="share-done" class="msg ok" hidden></p>
       <div class="btn-row">
+        <button type="button" id="share-group" class="btn-wa" hidden>Copy &amp; Open Group</button>
         <button type="button" id="share-files" class="btn-wa" hidden>Send with Photos</button>
         <a id="share-wa" class="btn-wa" href="#" target="_blank" rel="noopener">Send to WhatsApp</a>
         <button type="button" id="share-skip" class="secondary">Skip</button>
@@ -524,6 +530,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261026d"></script>
+  <script src="app.js?v=20261027a"></script>
 </body>
 </html>

@@ -71,7 +71,8 @@ After staff save a key in, the app opens the **Jobs** tab.
 - Top cards show active, overdue, completed and waiting-deposit jobs, plus how many jobs are at each step
 - Jobs are sorted by expected delivery date, with **Due in X days** / **Overdue** badges
 - After a key in is saved, the app offers **Send to WhatsApp**: WhatsApp opens with the order details (customer, phone, items, total, deposit, balance, notes, photo links) already written; choose the staff group and press Send. Each job also has a **📤 Share** button to send it again
-  - On a phone, or in Chrome / Edge on Windows, **Send with Photos** attaches the product photos too through the device's share menu (pick WhatsApp, then the group). The message is copied as well, in case WhatsApp drops the text. Sharing photos from a job later needs the latest `Code.gs`
+  - On a PC with WhatsApp Web: **Copy & Open Group** copies one picture (the product photos with the order details under them) and opens the shop's WhatsApp group; press **Ctrl+V** then **Enter**. Set the group's invite link once in **Settings → WhatsApp group invite link** (it is synced to every device)
+  - On a phone, **Send with Photos** attaches the product photos too through the device's share menu (pick WhatsApp, then the group). The message is copied as well, in case WhatsApp drops the text. Sharing photos from a job later needs the latest `Code.gs`
 - Press the green **WhatsApp** icon next to the phone number to open a chat with the customer. It opens in the WhatsApp logged in on that device, so log in WhatsApp Web / WhatsApp Desktop with the shop's number on each staff PC
 - Press **Delete** on a job to remove it (owner PIN). This removes the order and its sale too; other jobs keep their progress
 - Press **✏️ Edit** on a job to change its order details (customer, phone, category, printing, quantity, total, deposit, lead source, delivery date, notes). Sales figures update too
