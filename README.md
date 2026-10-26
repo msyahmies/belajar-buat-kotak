@@ -89,6 +89,7 @@ After staff save a key in, the app opens the **Jobs** tab.
 
 - Fill in your fixed monthly costs once: shop rent, staff salary, electricity, shop expenses, advertising, your own salary, plus any other costs. They apply to every month
 - EPF (KWSP) 13% + SOCSO/EIS ~1.25% is added on top of staff salary automatically
+- Every cost has a **tick box**: untick it to leave that cost out of the overhead total, break-even, net profit and Reports (e.g. a loan that is paid off, or a month without your own salary). The amount is kept, so tick it again to bring it back. Press **Save Overhead** to share the change with all devices
 - **Net profit/loss** = month's sales − operation costs (Daily expenses) − monthly overhead
 - **Break-even sales** = monthly overhead ÷ profit margin. The margin is worked out from this month's sales and operation costs; before both exist, the estimated margin you enter is used
 - **Sales still needed to cover overhead** = break-even sales − sales so far, and how much that is per day for the rest of the month

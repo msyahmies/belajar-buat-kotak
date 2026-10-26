@@ -95,10 +95,13 @@ let overhead = load(LS_OVERHEAD, null);
 if (!overhead || !('rent' in overhead)) overhead = structuredClone(DEFAULT_OVERHEAD);
 
 // Each overhead line with its amount, statutory contributions worked out from staff salary.
+// Unticked costs (o.off for the fixed lines, item.on === false for other costs) are left out.
+const statutoryOf = o => Math.round((Number(o.salary) || 0) * STATUTORY_RATE * 100) / 100;
 function overheadLines(o = overhead) {
-  const v = k => Number(o[k]) || 0;
-  const lines = OVERHEAD_FIELDS.map(f => ({ label: f.label, amount: f.key === 'statutory' ? Math.round(v('salary') * STATUTORY_RATE * 100) / 100 : v(f.key) }));
-  return lines.concat((o.items || []).filter(i => i.name).map(i => ({ label: i.name, amount: Number(i.amount) || 0 })));
+  const off = o.off || [];
+  const lines = OVERHEAD_FIELDS.filter(f => !off.includes(f.key))
+    .map(f => ({ label: f.label, amount: f.key === 'statutory' ? statutoryOf(o) : Number(o[f.key]) || 0 }));
+  return lines.concat((o.items || []).filter(i => i.name && i.on !== false).map(i => ({ label: i.name, amount: Number(i.amount) || 0 })));
 }
 
 // ---------- Sync (Google Apps Script) ----------
@@ -1394,15 +1397,27 @@ function renderOverhead() {
 
 function addOverheadItem(item = {}) {
   const node = $('#oh-item-tpl').content.firstElementChild.cloneNode(true);
+  $('[name=on]', node).checked = item.on !== false;
+  node.classList.toggle('off', item.on === false);
   $('[name=name]', node).value = item.name || '';
   $('[name=amount]', node).value = item.amount || '';
   $('.remove', node).addEventListener('click', () => node.remove());
   $('#oh-items').appendChild(node);
 }
 
+// Greys out unticked rows and shows the EPF/SOCSO amount worked out from the salary.
+function showOverheadToggles() {
+  const f = $('#overhead-form');
+  $$('.oh-fields .oh-on', f).forEach(c => c.closest('.oh-field').classList.toggle('off', !c.checked));
+  $$('#oh-items .oh-item').forEach(n => n.classList.toggle('off', !$('[name=on]', n).checked));
+  $('#oh-stat').textContent = rm(statutoryOf({ salary: f.salary.value }));
+}
+
 function fillOverheadForm() {
   const f = $('#overhead-form');
   OVERHEAD_FIELDS.forEach(({ key }) => { if (f[key]) f[key].value = overhead[key] || ''; });
+  $$('.oh-fields .oh-on', f).forEach(c => { c.checked = !(overhead.off || []).includes(c.dataset.key); });
+  showOverheadToggles();
   $('#oh-items').innerHTML = '';
   (overhead.items || []).forEach(addOverheadItem);
   f.margin.value = overhead.margin || '';
@@ -1412,8 +1427,9 @@ function readOverheadForm() {
   const f = $('#overhead-form');
   const o = { margin: Number(f.margin.value) || 0 };
   OVERHEAD_FIELDS.forEach(({ key }) => { if (f[key]) o[key] = Number(f[key].value) || 0; });
+  o.off = $$('.oh-fields .oh-on', f).filter(c => !c.checked).map(c => c.dataset.key);
   o.items = $$('#oh-items .oh-item')
-    .map(n => ({ name: $('[name=name]', n).value.trim(), amount: Number($('[name=amount]', n).value) || 0 }))
+    .map(n => ({ name: $('[name=name]', n).value.trim(), amount: Number($('[name=amount]', n).value) || 0, on: $('[name=on]', n).checked }))
     .filter(i => i.name);
   o.pinHash = pinHash; // the owner PIN travels with the overhead record
   return o;
@@ -1628,7 +1644,7 @@ $('#oh-date').value = todayStr();
 $('#oh-date').addEventListener('change', renderOverhead);
 $('#oh-add').addEventListener('click', () => addOverheadItem());
 // Recalculate as the owner types; Save shares it to Google Sheet.
-$('#overhead-form').addEventListener('input', () => { overhead = readOverheadForm(); save(LS_OVERHEAD, overhead); renderOverhead(); });
+$('#overhead-form').addEventListener('input', () => { overhead = readOverheadForm(); save(LS_OVERHEAD, overhead); showOverheadToggles(); renderOverhead(); });
 $('#oh-items').addEventListener('click', ev => { if (ev.target.closest('.remove')) setTimeout(() => { overhead = readOverheadForm(); save(LS_OVERHEAD, overhead); renderOverhead(); }); });
 $('#overhead-form').addEventListener('submit', onSubmitOverhead);
 $('#exp-date').value = todayStr();
