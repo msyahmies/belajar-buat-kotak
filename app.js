@@ -159,13 +159,21 @@ function entryTotals(e) {
   return e.lines.reduce((t, l) => ({ pcs: t.pcs + Number(l.qty), sales: t.sales + Number(l.amount) }), { pcs: 0, sales: 0 });
 }
 
+// Leads converted for a day = orders keyed in on that date. A number edited on the Ads tab is kept
+// as a difference from the order count at that time (convBase), so later orders still move it.
+const ordersOn = date => entries.reduce((t, e) => (e.date === date ? t + e.lines.length : t), 0);
+function convertedOn(date) {
+  const rec = entries.find(e => !e.lines.length && e.date === date);
+  const n = ordersOn(date);
+  return rec && rec.convBase != null ? Math.max(0, (Number(rec.converted) || 0) + n - Number(rec.convBase)) : n;
+}
+
 function summarize(list) {
   const out = { sales: 0, pcs: 0, leads: 0, converted: 0, deposit: 0, byCategory: {}, byPrinting: {}, bySource: {} };
   CATEGORIES.forEach(c => out.byCategory[c] = { pcs: 0, sales: 0 });
   PRINTINGS.forEach(p => out.byPrinting[p] = { pcs: 0, sales: 0 });
   for (const e of list) {
     out.leads += Number(e.leads) || 0;
-    out.converted += Number(e.converted) || 0;
     e.lines.forEach((l, i) => {
       const qty = Number(l.qty) || 0, amt = Number(l.amount) || 0;
       out.pcs += qty;
@@ -183,6 +191,7 @@ function summarize(list) {
       out.bySource[src].sales += amt;
     });
   }
+  out.converted = [...new Set(list.map(e => e.date))].reduce((t, d) => t + convertedOn(d), 0);
   return out;
 }
 
@@ -398,13 +407,12 @@ function renderLeads() {
 
   // One row per day that has leads (older key-ins may carry leads together with orders).
   const byDay = {};
-  monList.filter(e => Number(e.leads) || Number(e.converted)).forEach(e => {
-    const d = (byDay[e.date] ??= { leads: 0, converted: 0, ids: [] });
+  monList.forEach(e => {
+    const d = (byDay[e.date] ??= { leads: 0, converted: convertedOn(e.date), ids: [] });
     d.leads += Number(e.leads) || 0;
-    d.converted += Number(e.converted) || 0;
     if (isLeadsOnly(e)) d.ids.push(e.id);
   });
-  const days = Object.entries(byDay).sort((a, b) => b[0].localeCompare(a[0]));
+  const days = Object.entries(byDay).filter(([, v]) => v.leads || v.converted || v.ids.length).sort((a, b) => b[0].localeCompare(a[0]));
   $('#t-leads tbody').innerHTML = days.length
     ? days.map(([d, v]) => `<tr><td>${d}</td><td class="num">${v.leads}</td><td class="num">${v.converted}</td><td class="num">${convRate(v)}</td>
         <td class="btn-cell"><button type="button" class="edit-btn" data-edit-day="${d}">✏️ Edit</button> ${v.ids.map(id => `<button class="danger" data-del="${esc(id)}">Delete</button>`).join('')}</td></tr>`).join('')
@@ -554,16 +562,22 @@ function showOtherAdSpend(date) {
     : '';
 }
 
+function showConvAuto(date) {
+  const n = ordersOn(date), v = convertedOn(date);
+  $('#conv-auto').textContent = `Auto: ${n} order${n === 1 ? '' : 's'} keyed in on this date` + (v !== n ? ` (edited to ${v})` : '');
+}
+
 function fillLeadsForm() {
   const f = $('#leads-form');
   const rec = leadsFor(f.date.value);
   const spend = adSpendFor(f.date.value);
   f.adSpend.value = spend ? spend.amount : 0;
   f.leads.value = rec ? rec.leads : 0;
-  f.converted.value = rec ? rec.converted : 0;
+  f.converted.value = convertedOn(f.date.value);
+  showConvAuto(f.date.value);
   $('#leads-msg').className = 'msg';
   $('#leads-msg').textContent = rec || spend
-    ? `Already saved for this date: ad spend ${rm(spend ? spend.amount : 0)}, ${rec ? rec.leads : 0} leads in, ${rec ? rec.converted : 0} converted.` : '';
+    ? `Already saved for this date: ad spend ${rm(spend ? spend.amount : 0)}, ${rec ? rec.leads : 0} leads in, ${convertedOn(f.date.value)} converted.` : '';
   showOtherAdSpend(f.date.value);
   updateConvRate();
 }
@@ -594,6 +608,7 @@ async function onSubmitLeads(ev) {
     date: f.date.value,
     leads: Number(f.leads.value) || 0,
     converted: Number(f.converted.value) || 0,
+    convBase: ordersOn(f.date.value),
     lines: [],
     createdAt: existing ? existing.createdAt : new Date().toISOString(),
   };
@@ -603,7 +618,7 @@ async function onSubmitLeads(ev) {
   try {
     await saveAdSpend(rec.date, spend);
     // No leads record yet and nothing to put in one: only the ad spend was keyed in.
-    if (existing || rec.leads || rec.converted) {
+    if (existing || rec.leads || rec.converted !== rec.convBase) {
       if (settings.syncUrl) await remote({ action: existing ? 'update' : 'add', entry: rec });
       entries = existing ? entries.map(e => (e.id === rec.id ? rec : e)) : [...entries, rec];
       save(LS_ENTRIES, entries);

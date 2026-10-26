@@ -93,14 +93,19 @@ function appendWithTextDate(sh, row) {
 function listEntries() {
   const values = sheet(SHEET_ENTRIES).getDataRange().getValues();
   const jsonCol = HEADER.length - 1;
-  return values.slice(1).filter(r => r[0]).map(r => ({
-    id: String(r[0]),
-    date: dateText(r[1]),
-    leads: Number(r[2]) || 0,
-    converted: Number(r[3]) || 0,
-    createdAt: String(r[jsonCol - 1]),
-    lines: JSON.parse(r[jsonCol] || '[]'),
-  }));
+  return values.slice(1).filter(r => r[0]).map(r => {
+    // Details hold the order rows, or { lines, convBase } for a leads record with an edited "converted".
+    const d = JSON.parse(r[jsonCol] || '[]');
+    return {
+      id: String(r[0]),
+      date: dateText(r[1]),
+      leads: Number(r[2]) || 0,
+      converted: Number(r[3]) || 0,
+      createdAt: String(r[jsonCol - 1]),
+      lines: Array.isArray(d) ? d : (d.lines || []),
+      convBase: Array.isArray(d) ? undefined : d.convBase,
+    };
+  });
 }
 
 function entryRow(entry) {
@@ -118,7 +123,7 @@ function entryRow(entry) {
   return [entry.id, entry.date, Number(entry.leads) || 0, Number(entry.converted) || 0, Number(entry.leads) ? (Number(entry.converted) / Number(entry.leads) * 100).toFixed(1) + '%' : '', pcs, sales, deposit, sales - deposit]
     .concat(CATEGORIES.map(c => byCat[c] || 0))
     .concat(PRINTINGS.map(p => byPrint[p] || 0))
-    .concat([entry.createdAt, JSON.stringify(entry.lines)]);
+    .concat([entry.createdAt, JSON.stringify(entry.convBase != null ? { lines: entry.lines, convBase: entry.convBase } : entry.lines)]);
 }
 
 function addEntry(entry) {

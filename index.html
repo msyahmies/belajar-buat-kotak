@@ -13,7 +13,7 @@
   <link rel="icon" href="icons/favicon-64.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <!-- Change ?v= whenever style.css or app.js changes, so browsers load the new files. -->
-  <link rel="stylesheet" href="style.css?v=20261026b">
+  <link rel="stylesheet" href="style.css?v=20261026c">
 </head>
 <body>
   <header>
@@ -242,7 +242,7 @@
           <label>Date <input type="date" name="date" required></label>
           <label>Ad Spend (RM) <input type="number" name="adSpend" min="0" step="0.01" value="0"></label>
           <label>Total Leads In <input type="number" name="leads" min="0" value="0" required></label>
-          <label>Leads Converted <input type="number" name="converted" min="0" value="0" required></label>
+          <label>Leads Converted <input type="number" name="converted" min="0" value="0" required><small id="conv-auto" class="muted"></small></label>
           <label>% Leads Converted <input type="text" name="convRate" readonly tabindex="-1" value="-"></label>
         </div>
         <button type="submit">Save</button>
@@ -524,6 +524,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261026b"></script>
+  <script src="app.js?v=20261026c"></script>
 </body>
 </html>

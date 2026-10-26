@@ -41,6 +41,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 
 Ad spend and leads live together in one tab, before Settings, so you can see straight away whether ads make or lose money.
 - **Daily Ads & Leads** form: date, **ad spend (RM)**, total leads in, leads converted; **% leads converted** is calculated automatically. One record per date; saving again for the same date replaces it
+- **Leads converted** fills in automatically: the number of orders keyed in on that date. You can still change it; the change is kept as a difference, so when orders for that day are added or deleted the number moves with them (e.g. auto 3, edited to 2, a new order comes in → 3). Keeping an edited number across devices needs the latest `Code.gs`
 - To fix a mistake, press **✏️ Edit** on that day in the ads or leads table: the day loads into the form, change it and press Save. Ad spend recorded elsewhere that day is listed under the form with its own **✏️ Edit**
 - The ad spend is saved as an expense (category **Advertising / Ads**), so it still counts in Expenses, Overhead and Reports. Ad spend recorded elsewhere for that day (Meta auto import, Telegram, Expenses tab) is added on top and shown under the form
 - **Ads performance** for the month and the selected day:
