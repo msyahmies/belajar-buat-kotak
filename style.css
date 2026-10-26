@@ -308,3 +308,6 @@ input.oh-on { width: 20px; height: 20px; margin: 0; accent-color: var(--navy); c
 .oh-field.off .oh-check, .oh-item.off input[type=text] { color: var(--muted); text-decoration: line-through; }
 .oh-field.off input[type=number], .oh-field.off .oh-auto, .oh-item.off input[type=number] { opacity: 0.45; }
 @media (max-width: 640px) { .oh-auto { width: 130px; } }
+.photos { border-radius: 10px; padding: 6px; margin-left: -6px; margin-right: -6px; outline: none; }
+.photos.target { background: var(--accent-soft); }
+.photos.drop { background: var(--accent-soft); box-shadow: 0 0 0 2px var(--navy) inset; }

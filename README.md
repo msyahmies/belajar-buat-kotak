@@ -15,7 +15,7 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
   - **Lead source** (WhatsApp, Facebook, Instagram, TikTok, Walk-in, Referral, Returning Customer, Others)
   - **Expected delivery** date
   - **Notes**
-  - **Product photos**: 4 slots, **at least 1 photo is required** before the order can be saved. Photos are shrunk automatically and saved in Google Drive (folder *Shop Sales Tracker Product Photos*). They show above each job on the Jobs tab and in History; tap a photo to see it large. **✏️ Edit** can add, remove or change them
+  - **Product photos**: 4 slots, **at least 1 photo is required** before the order can be saved. Add them by **copy & paste** (right-click a photo > Copy image, or take a screenshot, then press **Ctrl+V** while working on that order row), by **dragging** a photo onto the slots, or with **+**. Photos are shrunk automatically and saved in Google Drive (folder *Shop Sales Tracker Product Photos*). They show above each job on the Jobs tab and in History; tap a photo to see it large. **✏️ Edit** can add, remove or change them
 
 ## What the Dashboard shows
 

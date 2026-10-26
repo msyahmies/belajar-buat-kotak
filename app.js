@@ -469,21 +469,66 @@ function renderSlots(box) {
   }
 }
 
+async function addPhotoFiles(box, fileList) {
+  const files = [...fileList].filter(f => f.type.startsWith('image/')).slice(0, MAX_PHOTOS - box.images.length);
+  if (!files.length) return false;
+  for (const f of files) {
+    try { box.images.push(await shrinkImage(f)); } catch (err) { alert(err.message); }
+  }
+  renderSlots(box);
+  return true;
+}
+
+// The photo box that Ctrl+V goes to: the last one clicked or typed in, else the first one still short of photos.
+let pasteBox = null;
+function setPasteBox(box) {
+  $$('.photos.target').forEach(b => b.classList.remove('target'));
+  pasteBox = box;
+  box?.classList.add('target');
+}
+
 function initPhotos(box, images) {
   box.images = [...(images || [])];
+  box.tabIndex = 0;
+  box.title = 'Click here, then press Ctrl+V to paste a copied photo';
   renderSlots(box);
-  box.addEventListener('change', async ev => {
-    const files = [...(ev.target.files || [])].slice(0, MAX_PHOTOS - box.images.length);
-    for (const f of files) {
-      try { box.images.push(await shrinkImage(f)); } catch (err) { alert(err.message); }
-    }
-    renderSlots(box);
-  });
+  box.addEventListener('change', ev => { if (ev.target.files) addPhotoFiles(box, ev.target.files); });
   box.addEventListener('click', ev => {
+    setPasteBox(box);
     const rm = ev.target.dataset?.rm;
     if (rm !== undefined) { box.images.splice(Number(rm), 1); renderSlots(box); }
   });
+  // Drag a photo from a folder, WhatsApp Desktop or another window straight onto the slots.
+  box.addEventListener('dragover', ev => { ev.preventDefault(); box.classList.add('drop'); });
+  box.addEventListener('dragleave', () => box.classList.remove('drop'));
+  box.addEventListener('drop', ev => {
+    ev.preventDefault();
+    box.classList.remove('drop');
+    setPasteBox(box);
+    addPhotoFiles(box, ev.dataTransfer.files);
+  });
 }
+
+// Typing in an order row makes its photo box the paste target.
+document.addEventListener('focusin', ev => {
+  const scope = ev.target.closest?.('.line, #edit-form');
+  const box = scope && $('.photos', scope);
+  if (box) setPasteBox(box);
+});
+
+// Ctrl+V with a copied photo (e.g. right-click > Copy image in WhatsApp Web, or a screenshot).
+document.addEventListener('paste', async ev => {
+  const files = [...(ev.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+  const inEdit = !$('#edit-modal').hidden;
+  const boxes = inEdit ? [$('#edit-form .photos')] : $$('#lines .photos');
+  let box = boxes.includes(pasteBox) ? pasteBox : boxes.find(b => b.images.length < MAX_PHOTOS);
+  if (!box || (!inEdit && !$('#tab-input').classList.contains('active'))) return;
+  ev.preventDefault();
+  if (box.images.length >= MAX_PHOTOS) { alert('This order already has 4 photos. Remove one first.'); return; }
+  setPasteBox(box);
+  await addPhotoFiles(box, files);
+});
 
 // Uploads new photos (data URLs) to Google Drive and returns the list with Drive ids in their place.
 async function uploadPhotos(images, label, onProgress) {
