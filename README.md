@@ -9,13 +9,14 @@ A simple web app for staff to key in the daily sales of a shirt printing shop.
 - One or more **sales rows** (one row per order), each with:
   - **Order No.** (e.g. PB0107): filled in automatically with the next number after the highest one used; can be changed. Shown on the job card and searchable
   - **Customer name** and **phone no.**
-  - **Category**: Work Shirt / Family Day Shirt / Sports Shirt / Birthday Shirt
+  - **Category**: Baju Pekerja / Family Day Shirt / Sports Shirt / Birthday Shirt
   - **Printing**: DTF / Sublimation
   - **Quantity** (pcs)
   - **Total (RM)**, **deposit**, and **balance** (calculated automatically)
   - **Lead source** (WhatsApp, Facebook, Instagram, TikTok, Walk-in, Referral, Returning Customer, Others)
   - **Expected delivery** date
-  - **Notes**
+  - **Size Breakdown**: one row per shirt code or item, with colour. Pick **Dewasa** (XS, S, M, L, XL, 2XL, 3XL, 5XL, 7XL), **Kanak-kanak** (22–32) or **Free Size** (caps, apron: one Qty box; typing Baseball Cap / Trucker Cap / Snapback / Apron picks it). **+ Tambah item** for more codes or colours. Quantity is counted from the breakdown. Sizes show on the job card, in History and in the WhatsApp message
+  - **Notes** (anything else, e.g. logo position)
   - **Product photos**: 4 slots, **at least 1 photo is required** before the order can be saved. Add them by **copy & paste** (right-click a photo > Copy image, or take a screenshot, then press **Ctrl+V** while working on that order row), by **dragging** a photo onto the slots, or with **+**. Photos are shrunk automatically and saved in Google Drive (folder *Shop Sales Tracker Product Photos*). They show above each job on the Jobs tab and in History; tap a photo to see it large. **✏️ Edit** can add, remove or change them
 
 ## What the Dashboard shows

@@ -13,7 +13,7 @@
   <link rel="icon" href="icons/favicon-64.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <!-- Change ?v= whenever style.css or app.js changes, so browsers load the new files. -->
-  <link rel="stylesheet" href="style.css?v=20261027b">
+  <link rel="stylesheet" href="style.css?v=20261027c">
 </head>
 <body>
   <header>
@@ -124,7 +124,8 @@
             <select name="source" required></select>
           </label>
           <label>Expected Delivery <input type="date" name="delivery"></label>
-          <label class="wide">Notes <textarea name="notes" rows="2" placeholder="e.g. sizes, colours, design"></textarea></label>
+          <label class="wide">Notes <textarea name="notes" rows="2" placeholder="e.g. logo front left, name at the back"></textarea></label>
+          <div class="wide sizes"><span class="photos-label">Size Breakdown <small class="muted">· Quantity is counted from here</small></span><div class="size-rows"></div><button type="button" class="add-size">+ Tambah item</button></div>
           <div class="wide photos"><span class="photos-label">Product Photos <b>(required: at least 1, up to 4)</b> <small class="muted">· copy a photo and press Ctrl+V, drag it here, or tap +</small></span><div class="slots"></div></div>
           <button type="button" class="remove" title="Remove">✕</button>
         </div>
@@ -478,6 +479,7 @@
         <label>Lead Source <select name="source"></select></label>
         <label>Expected Delivery <input type="date" name="delivery"></label>
         <label class="wide">Notes <textarea name="notes" rows="2"></textarea></label>
+        <div class="wide sizes"><span class="photos-label">Size Breakdown</span><div class="size-rows"></div><button type="button" class="add-size">+ Tambah item</button></div>
         <div class="wide photos"><span class="photos-label">Product Photos (up to 4) <small class="muted">· Ctrl+V to paste</small></span><div class="slots"></div></div>
       </div>
       <p id="edit-msg" class="msg"></p>
@@ -533,6 +535,8 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261027b"></script>
+  <datalist id="item-names"><option>Baseball Cap</option><option>Trucker Cap</option><option>Snapback</option><option>Apron</option></datalist>
+
+  <script src="app.js?v=20261027c"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 // Shop Sales Tracker — data is kept in localStorage and (optionally) synced
 // to Google Sheet through Google Apps Script (see apps-script/Code.gs).
 
-const CATEGORIES = ['Work Shirt', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
+const CATEGORIES = ['Baju Pekerja', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
 const PRINTINGS = ['DTF', 'Sublimation'];
 // Operation costs are bought as needed (daily); overheads are fixed monthly costs.
 const OPERATION_COSTS = ['Blank Shirts', 'DTF Sticker / Film', 'Sublimation Paper & Ink', 'Ink', 'Plastic / Packaging', 'Delivery / Postage', 'Advertising / Ads', 'Machine Maintenance', 'Other Operation Cost'];
@@ -10,7 +10,7 @@ const SOURCES = ['WhatsApp', 'Facebook', 'Instagram', 'TikTok', 'Walk-in', 'Refe
 
 // Names used by the earlier Malay version, so records saved before still group correctly.
 const LEGACY_NAMES = {
-  'Baju Pekerja': 'Work Shirt', 'Baju Family Day': 'Family Day Shirt', 'Baju Sukan': 'Sports Shirt', 'Baju Birthday': 'Birthday Shirt',
+  'Work Shirt': 'Baju Pekerja', 'Baju Family Day': 'Family Day Shirt', 'Baju Sukan': 'Sports Shirt', 'Baju Birthday': 'Birthday Shirt',
   'Customer Lama': 'Returning Customer', 'Lain-lain': 'Others',
   'Sewa Kedai': 'Shop Rent', 'Gaji Staff': 'Staff Salary', 'Bil Elektrik & Air': 'Electricity & Water', 'Internet & Telefon': 'Internet & Phone',
   'Baju Kosong / Bahan': 'Blank Shirts', 'Blank Shirts / Materials': 'Blank Shirts', 'Ink & Film': 'DTF Sticker / Film', 'Iklan / Ads': 'Advertising / Ads', 'Penghantaran / Pos': 'Delivery / Postage',
@@ -551,6 +551,115 @@ document.addEventListener('click', ev => {
   $('#img-modal').hidden = false;
 });
 
+// ---------- Size breakdown ----------
+// line.sizes = [{ code, color, group: 'adult' | 'kids' | 'free', qty: { L: 10, ... } }]; free size uses qty.FREE.
+// When it has any quantity, the order's Quantity is the total of the breakdown.
+
+const SIZE_GROUPS = {
+  adult: { label: 'Dewasa', sizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '5XL', '7XL'] },
+  kids: { label: 'Kanak-kanak', sizes: ['22', '24', '26', '28', '30', '32'] },
+  free: { label: 'Free Size', sizes: ['FREE'] },
+};
+const FREE_ITEMS = /\b(cap|snapback|apron|topi)\b/i;
+const sizeTotal = row => Object.values(row.qty || {}).reduce((t, n) => t + (Number(n) || 0), 0);
+const sizesTotal = sizes => (sizes || []).reduce((t, r) => t + sizeTotal(r), 0);
+
+function sizeRowHtml(row) {
+  const g = SIZE_GROUPS[row.group] ? row.group : 'adult';
+  const tiles = SIZE_GROUPS[g].sizes.map(sz => {
+    const v = Number(row.qty?.[sz]) || '';
+    return g === 'free'
+      ? `<label class="size-tile free${v ? ' has' : ''}">Qty <input type="number" min="0" inputmode="numeric" data-size="FREE" value="${v}"></label>`
+      : `<label class="size-tile${v ? ' has' : ''}">${sz}<input type="number" min="0" inputmode="numeric" data-size="${sz}" value="${v}"></label>`;
+  }).join('');
+  return `<div class="size-row" data-group="${g}">
+    <div class="size-top">
+      <input name="code" list="item-names" placeholder="${g === 'free' ? 'Item, e.g. Baseball Cap' : 'Shirt code, e.g. QD0402'}" value="${esc(row.code || '')}">
+      <input name="color" placeholder="Warna" value="${esc(row.color || '')}">
+      <span class="size-group">${Object.entries(SIZE_GROUPS).map(([k, v]) => `<button type="button" data-group="${k}" class="${k === g ? 'on' : ''}">${v.label}</button>`).join('')}</span>
+      <span class="size-total">Jumlah: ${sizeTotal(row)}</span>
+      <button type="button" class="rm-size" title="Remove">✕</button>
+    </div>
+    <div class="size-tiles">${tiles}</div>
+  </div>`;
+}
+
+function readSizeRow(n) {
+  const qty = {};
+  $$('[data-size]', n).forEach(i => { const v = Number(i.value) || 0; if (v > 0) qty[i.dataset.size] = v; });
+  return { code: $('[name=code]', n).value.trim(), color: $('[name=color]', n).value.trim(), group: n.dataset.group, qty };
+}
+
+const readSizes = box => $$('.size-row', box).map(readSizeRow).filter(r => sizeTotal(r) > 0);
+
+// The Quantity box of the same order follows the breakdown (read-only while the breakdown has numbers).
+function syncQty(box) {
+  const scope = box.closest('.line, #edit-form');
+  const qty = scope && $('[name=qty]', scope);
+  const total = sizesTotal(readSizes(box));
+  $$('.size-row', box).forEach(n => {
+    $('.size-total', n).textContent = 'Jumlah: ' + sizeTotal(readSizeRow(n));
+    $$('.size-tile', n).forEach(t => t.classList.toggle('has', Number($('input', t).value) > 0));
+  });
+  if (!qty) return;
+  if (total > 0) qty.value = total;
+  qty.readOnly = total > 0;
+  qty.classList.toggle('auto-qty', total > 0);
+  if (scope.classList.contains('line')) updateFormTotal();
+}
+
+function setSizes(box, sizes) {
+  const rows = sizes && sizes.length ? sizes : [{ group: 'adult' }];
+  $('.size-rows', box).innerHTML = rows.map(sizeRowHtml).join('');
+  syncQty(box);
+}
+
+function initSizes(box, sizes) {
+  setSizes(box, sizes);
+  box.addEventListener('input', ev => {
+    // Typing a cap or apron name switches the row to Free Size.
+    const row = ev.target.closest('.size-row');
+    if (ev.target.name === 'code' && FREE_ITEMS.test(ev.target.value) && row.dataset.group !== 'free') {
+      const data = { ...readSizeRow(row), group: 'free', qty: {} };
+      row.outerHTML = sizeRowHtml(data);
+      const fresh = $$('.size-row', box).find(r => $('[name=code]', r).value === data.code);
+      const input = fresh && $('[name=code]', fresh);
+      if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    }
+    syncQty(box);
+  });
+  box.addEventListener('click', ev => {
+    const row = ev.target.closest('.size-row');
+    if (ev.target.classList.contains('add-size')) {
+      $('.size-rows', box).insertAdjacentHTML('beforeend', sizeRowHtml({ group: 'adult' }));
+      $('.size-rows .size-row:last-child [name=code]', box).focus();
+    } else if (ev.target.classList.contains('rm-size')) {
+      row.remove();
+      if (!$('.size-row', box)) $('.size-rows', box).innerHTML = sizeRowHtml({ group: 'adult' });
+    } else if (ev.target.dataset.group && row) {
+      const data = readSizeRow(row);
+      row.outerHTML = sizeRowHtml({ ...data, group: ev.target.dataset.group, qty: ev.target.dataset.group === data.group ? data.qty : {} });
+    } else return;
+    syncQty(box);
+  });
+}
+
+// "QD0402-HITAM / L-10" blocks for the WhatsApp message.
+function sizeText(sizes) {
+  return (sizes || []).map(r => {
+    const head = [r.code || (r.group === 'free' ? 'ITEM' : 'BAJU'), r.color].filter(Boolean).join('-').toUpperCase()
+      + (r.group === 'kids' ? ' (KANAK-KANAK)' : '');
+    const rows = Object.entries(r.qty).map(([sz, n]) => `${sz === 'FREE' ? 'FREE SIZE' : sz}-${n}`);
+    return [head, ...rows].join('\n');
+  }).join('\n\n');
+}
+
+// One short line for job cards and History: "QD0402 Hitam: L×10 · HC2602: S×1, L×1".
+function sizeSummary(sizes) {
+  return (sizes || []).map(r => `${[r.code, r.color].filter(Boolean).join(' ') || 'Item'}${r.group === 'kids' ? ' (kids)' : ''}: `
+    + Object.entries(r.qty).map(([sz, n]) => sz === 'FREE' ? `${n} pcs` : `${sz}×${n}`).join(', ')).join(' · ');
+}
+
 // ---------- Key In form ----------
 
 // Next order number after the highest one used so far (PB0107 -> PB0108), counting the rows on the form too.
@@ -571,11 +680,12 @@ function addLine() {
   $('[name=printing]', node).innerHTML = PRINTINGS.map(p => `<option>${p}</option>`).join('');
   $('[name=source]', node).innerHTML = SOURCES.map(s => `<option>${s}</option>`).join('');
   initPhotos($('.photos', node), []);
+  $('#lines').appendChild(node);
+  initSizes($('.sizes', node), []);
   $('.remove', node).addEventListener('click', () => {
     if ($$('#lines .line').length > 1) node.remove();
     updateFormTotal();
   });
-  $('#lines').appendChild(node);
 }
 
 function readLines() {
@@ -592,6 +702,7 @@ function readLines() {
     delivery: $('[name=delivery]', n).value,
     notes: $('[name=notes]', n).value.trim(),
     images: [...($('.photos', n).images || [])],
+    sizes: readSizes($('.sizes', n)),
   }));
 }
 
@@ -798,6 +909,7 @@ function orderMessage(items) {
       `Status Baju: ${job?.shirt || job?.order || '-'}`,
     ];
     if (l.delivery) out.push(`Delivery: ${l.delivery}`);
+    if ((l.sizes || []).length) out.push('Size:', sizeText(l.sizes), '');
     out.push('Nota:', l.notes || '');
     return out.join('\n').trimEnd();
   });
@@ -1011,6 +1123,7 @@ function lineDetail(l, deposit) {
     `${l.qty} × ${esc(l.category)} (${esc(l.printing)})${l.orderDate ? ` · ordered ${esc(l.orderDate)}` : ''}`,
     `Total ${rm(l.amount)} · Deposit ${rm(deposit)} · Balance ${rm((Number(l.amount) || 0) - deposit)}`,
   ];
+  if ((l.sizes || []).length) parts.push(`Size: ${esc(sizeSummary(l.sizes))}`);
   if (l.source) parts.push(`Source: ${esc(l.source)}`);
   if (l.delivery) parts.push(`Delivery: ${esc(l.delivery)}`);
   if (l.notes) parts.push(`Notes: ${esc(l.notes)}`);
@@ -1386,6 +1499,7 @@ function jobCard(job) {
         ${job.orderNo ? `<span class="order-no">#${esc(job.orderNo)}</span> ` : ''}<strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}${waLink(job.phone)}` : ''}
         <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ordered ${esc(job.date)}${job.delivery ? ` · delivery ${esc(job.delivery)}` : ''}</div>
         <div class="muted">Total ${rm(job.amount)} · Deposit ${rm(job.deposit)} · Balance ${rm(balance)}</div>
+        ${(job.sizes || []).length ? `<div class="muted size-sum">Size: ${esc(sizeSummary(job.sizes))}</div>` : ''}
         ${job.notes ? `<div class="muted">Notes: ${esc(job.notes)}</div>` : ''}
       </div>
       <div class="job-status">
@@ -1409,6 +1523,7 @@ function waitingCard(job) {
       <div>
         ${job.orderNo ? `<span class="order-no">#${esc(job.orderNo)}</span> ` : ''}<strong>${esc(job.customer || '(no name)')}</strong>${job.phone ? ` · ${esc(job.phone)}${waLink(job.phone)}` : ''}
         <div class="muted">${job.qty} × ${esc(job.category)} (${esc(job.printing)}) · ${rm(job.amount)} · ordered ${esc(job.date)}</div>
+        ${(job.sizes || []).length ? `<div class="muted size-sum">Size: ${esc(sizeSummary(job.sizes))}</div>` : ''}
       </div>
       <div class="job-status"><button type="button" class="edit-btn" data-edit="${esc(job.key)}">✏️ Edit</button>
         <button type="button" class="share-btn" data-share="${esc(job.key)}">📤 Share</button>
@@ -1483,6 +1598,7 @@ function openEdit(key) {
   f.deposit.value = lineDeposit(found.entry, found.index) || '';
   f.delivery.value = l.delivery || '';
   f.notes.value = l.notes || '';
+  setSizes($('.sizes', f), l.sizes || []);
   $('.photos', f).images = [...(l.images || [])];
   renderSlots($('.photos', f));
   $('#edit-msg').textContent = '';
@@ -1511,6 +1627,7 @@ async function onSaveEdit(ev) {
     delivery: f.delivery.value,
     notes: f.notes.value.trim(),
     images: [...($('.photos', f).images || [])],
+    sizes: readSizes($('.sizes', f)),
   };
   const btn = $('button[type=submit]', f);
   btn.disabled = true;
@@ -1903,6 +2020,7 @@ $('#job-list').addEventListener('click', ev => {
 });
 $('#edit-form').addEventListener('submit', onSaveEdit);
 initPhotos($('#edit-form .photos'), []);
+initSizes($('#edit-form .sizes'), []);
 $('#share-files').addEventListener('click', onShareFiles);
 $('#share-group').addEventListener('click', onShareGroup);
 $('#share-details').addEventListener('click', onShareDetails);

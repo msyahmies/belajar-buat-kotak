@@ -15,7 +15,7 @@ const JOB_FIELDS = ['design', 'order', 'shirt', 'print', 'heatpress', 'packing',
 const JOB_HEADER = ['Job ID', 'Customer', 'Phone', 'Category', 'Printing', 'Qty', 'Expected Delivery', 'Deposit (RM)',
   'Design', 'Shirt Order', 'Shirt Status', 'Print', 'Heat Press', 'Packing', 'Post / Pickup', 'Post / Pickup Status', 'Current Status', 'Updated At'];
 const EXPENSE_HEADER = ['ID', 'Date', 'Type', 'Category', 'Amount (RM)', 'Notes', 'Entered At', 'Receipt'];
-const CATEGORIES = ['Work Shirt', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
+const CATEGORIES = ['Baju Pekerja', 'Family Day Shirt', 'Sports Shirt', 'Birthday Shirt'];
 const PRINTINGS = ['DTF', 'Sublimation'];
 
 const HEADER = ['ID', 'Date', 'Leads In', 'Leads Converted', '% Leads Converted', 'Total Pcs', 'Total (RM)', 'Deposit (RM)', 'Balance (RM)']
@@ -119,7 +119,8 @@ function entryRow(entry) {
     pcs += q;
     sales += Number(l.amount) || 0;
     deposit += Number(l.deposit) || 0;
-    byCat[l.category] = (byCat[l.category] || 0) + q;
+    const cat = l.category === 'Work Shirt' ? 'Baju Pekerja' : l.category; // renamed category
+    byCat[cat] = (byCat[cat] || 0) + q;
     byPrint[l.printing] = (byPrint[l.printing] || 0) + q;
   });
   return [entry.id, entry.date, Number(entry.leads) || 0, Number(entry.converted) || 0, Number(entry.leads) ? (Number(entry.converted) / Number(entry.leads) * 100).toFixed(1) + '%' : '', pcs, sales, deposit, sales - deposit]
